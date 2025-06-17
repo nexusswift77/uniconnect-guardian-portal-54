@@ -3,15 +3,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, X, Clock } from 'lucide-react';
-
-interface Student {
-  id: string;
-  name: string;
-  studentId: string;
-  checkInTime?: string;
-  method: 'BLE' | 'QR' | 'Absent';
-  status: 'verified' | 'pending' | 'absent';
-}
+import { Student } from '@/types/student';
 
 interface AttendanceTableProps {
   students: Student[];

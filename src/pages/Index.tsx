@@ -6,23 +6,25 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { AttendanceTable } from '@/components/dashboard/AttendanceTable';
 import { QRGenerator } from '@/components/dashboard/QRGenerator';
+import { LecturerOverview } from '@/components/dashboard/LecturerOverview';
 import { Users, Calendar, Clock, Monitor, Bell, Grid2X2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Student } from '@/types/student';
 
 // Mock data
-const mockStudents = [
-  { id: '1', name: 'Alice Johnson', studentId: 'ST001', checkInTime: '09:02 AM', method: 'BLE' as const, status: 'verified' as const },
-  { id: '2', name: 'Bob Smith', studentId: 'ST002', checkInTime: '09:05 AM', method: 'QR' as const, status: 'pending' as const },
-  { id: '3', name: 'Carol Davis', studentId: 'ST003', checkInTime: '09:01 AM', method: 'BLE' as const, status: 'verified' as const },
-  { id: '4', name: 'David Wilson', studentId: 'ST004', method: 'Absent' as const, status: 'absent' as const },
-  { id: '5', name: 'Eva Brown', studentId: 'ST005', checkInTime: '09:03 AM', method: 'BLE' as const, status: 'verified' as const },
+const mockStudents: Student[] = [
+  { id: '1', name: 'Alice Johnson', studentId: 'ST001', checkInTime: '09:02 AM', method: 'BLE', status: 'verified' },
+  { id: '2', name: 'Bob Smith', studentId: 'ST002', checkInTime: '09:05 AM', method: 'QR', status: 'pending' },
+  { id: '3', name: 'Carol Davis', studentId: 'ST003', checkInTime: '09:01 AM', method: 'BLE', status: 'verified' },
+  { id: '4', name: 'David Wilson', studentId: 'ST004', method: 'Absent', status: 'absent' },
+  { id: '5', name: 'Eva Brown', studentId: 'ST005', checkInTime: '09:03 AM', method: 'BLE', status: 'verified' },
 ];
 
 const Index = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [students, setStudents] = useState(mockStudents);
+  const [students, setStudents] = useState<Student[]>(mockStudents);
   const { toast } = useToast();
 
   const handleLogin = (email: string, password: string, role: string) => {
@@ -56,7 +58,7 @@ const Index = () => {
   const handleReject = (studentId: string) => {
     setStudents(prev => prev.map(student => 
       student.id === studentId 
-        ? { ...student, status: 'absent' as const }
+        ? { ...student, status: 'absent' as const, method: 'Absent' as const, checkInTime: undefined }
         : student
     ));
     toast({
@@ -141,6 +143,9 @@ const Index = () => {
       
       case 'qr-generator':
         return <QRGenerator />;
+      
+      case 'lecturers':
+        return <LecturerOverview />;
       
       default:
         return (
