@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { MetricCard } from './MetricCard';
-import { Users, Calendar, Clock, CheckCircle } from 'lucide-react';
+import { Users, Calendar, Clock, CheckCircle, Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface LecturerData {
   id: string;
@@ -69,6 +70,8 @@ const mockLecturers: LecturerData[] = [
 ];
 
 export const LecturerOverview: React.FC = () => {
+  const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'partial' | 'absent'>('all');
+
   const presentLecturers = mockLecturers.filter(l => l.status === 'present').length;
   const absentLecturers = mockLecturers.filter(l => l.status === 'absent').length;
   const partialLecturers = mockLecturers.filter(l => l.status === 'partial').length;
@@ -77,6 +80,16 @@ export const LecturerOverview: React.FC = () => {
   const totalPresent = mockLecturers.reduce((sum, l) => sum + l.studentsPresent, 0);
   const totalBLE = mockLecturers.reduce((sum, l) => sum + l.bleCheckIns, 0);
   const totalQR = mockLecturers.reduce((sum, l) => sum + l.qrCheckIns, 0);
+
+  const filteredLecturers = statusFilter === 'all' 
+    ? mockLecturers 
+    : mockLecturers.filter(lecturer => lecturer.status === statusFilter);
+
+  const getFilterButtonClass = (filterValue: string) => {
+    return statusFilter === filterValue 
+      ? 'bg-sky-blue/20 text-sky-blue border border-sky-blue/30' 
+      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10';
+  };
 
   const getStatusBadge = (status: string, attendedClasses: number, totalClasses: number) => {
     if (status === 'present') {
@@ -143,6 +156,41 @@ export const LecturerOverview: React.FC = () => {
           </div>
         </div>
 
+        {/* Filter Buttons */}
+        <div className="mb-6">
+          <div className="flex space-x-2">
+            <Button
+              size="sm"
+              onClick={() => setStatusFilter('all')}
+              className={`rounded-xl ${getFilterButtonClass('all')}`}
+            >
+              <Filter className="w-4 h-4 mr-1" />
+              All ({mockLecturers.length})
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setStatusFilter('present')}
+              className={`rounded-xl ${getFilterButtonClass('present')}`}
+            >
+              Present ({presentLecturers})
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setStatusFilter('partial')}
+              className={`rounded-xl ${getFilterButtonClass('partial')}`}
+            >
+              Partial ({partialLecturers})
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setStatusFilter('absent')}
+              className={`rounded-xl ${getFilterButtonClass('absent')}`}
+            >
+              Absent ({absentLecturers})
+            </Button>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -156,7 +204,7 @@ export const LecturerOverview: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {mockLecturers.map((lecturer) => (
+              {filteredLecturers.map((lecturer) => (
                 <tr key={lecturer.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="py-4 px-4">
                     <div>
@@ -192,6 +240,12 @@ export const LecturerOverview: React.FC = () => {
             </tbody>
           </table>
         </div>
+        
+        {filteredLecturers.length === 0 && (
+          <div className="text-center py-8 text-gray-400">
+            No lecturers found matching your criteria
+          </div>
+        )}
       </div>
     </div>
   );

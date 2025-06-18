@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Sidebar } from '@/components/dashboard/Sidebar';
@@ -134,26 +135,26 @@ const Index = () => {
         return (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <MetricCard 
-                title="Total Students" 
-                value="30" 
-                change="12%" 
-                trend="up" 
-                icon={Users} 
-                color="blue"
-                onClick={() => handleMetricCardClick('all')}
-                className="cursor-pointer"
-              />
-              <MetricCard 
-                title="Present Today" 
-                value={students.filter(s => s.status === 'verified').length.toString()} 
-                change="8%" 
-                trend="up" 
-                icon={Calendar} 
-                color="green"
-                onClick={() => handleMetricCardClick('present')}
-                className="cursor-pointer"
-              />
+              <div onClick={() => handleMetricCardClick('all')} className="cursor-pointer">
+                <MetricCard 
+                  title="Total Students" 
+                  value="30" 
+                  change="12%" 
+                  trend="up" 
+                  icon={Users} 
+                  color="blue"
+                />
+              </div>
+              <div onClick={() => handleMetricCardClick('present')} className="cursor-pointer">
+                <MetricCard 
+                  title="Present Today" 
+                  value={students.filter(s => s.status === 'verified').length.toString()} 
+                  change="8%" 
+                  trend="up" 
+                  icon={Calendar} 
+                  color="green"
+                />
+              </div>
               <MetricCard 
                 title="Attendance Rate" 
                 value={`${Math.round((students.filter(s => s.status === 'verified').length / students.length) * 100)}%`}
