@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Clock, Search, Filter } from 'lucide-react';
+import { Check, X, Clock, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Student } from '@/types/student';
 
 interface AttendanceTableProps {
@@ -22,6 +22,8 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'verified' | 'pending' | 'absent'>('all');
+  const [studentsPerPage, setStudentsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
@@ -31,6 +33,14 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
       return matchesSearch && matchesStatus;
     });
   }, [students, searchTerm, statusFilter]);
+
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (currentPage - 1) * studentsPerPage;
+    const endIndex = startIndex + studentsPerPage;
+    return filteredStudents.slice(startIndex, endIndex);
+  }, [filteredStudents, currentPage, studentsPerPage]);
+
+  const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
 
   const getStatusBadge = (status: string, method: string) => {
     if (status === 'verified') {
@@ -47,6 +57,11 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
       ? 'bg-sky-blue/20 text-sky-blue border border-sky-blue/30' 
       : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10';
   };
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, studentsPerPage]);
 
   return (
     <div className="glass-card p-6">
@@ -80,36 +95,53 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
           </div>
 
           {/* Filter Buttons */}
-          <div className="flex space-x-2">
-            <Button
-              size="sm"
-              onClick={() => setStatusFilter('all')}
-              className={`rounded-xl ${getFilterButtonClass('all')}`}
-            >
-              <Filter className="w-4 h-4 mr-1" />
-              All ({students.length})
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setStatusFilter('verified')}
-              className={`rounded-xl ${getFilterButtonClass('verified')}`}
-            >
-              Present ({students.filter(s => s.status === 'verified').length})
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setStatusFilter('pending')}
-              className={`rounded-xl ${getFilterButtonClass('pending')}`}
-            >
-              Pending ({students.filter(s => s.status === 'pending').length})
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setStatusFilter('absent')}
-              className={`rounded-xl ${getFilterButtonClass('absent')}`}
-            >
-              Absent ({students.filter(s => s.status === 'absent').length})
-            </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex space-x-2">
+              <Button
+                size="sm"
+                onClick={() => setStatusFilter('all')}
+                className={`rounded-xl ${getFilterButtonClass('all')}`}
+              >
+                <Filter className="w-4 h-4 mr-1" />
+                All ({students.length})
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setStatusFilter('verified')}
+                className={`rounded-xl ${getFilterButtonClass('verified')}`}
+              >
+                Present ({students.filter(s => s.status === 'verified').length})
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setStatusFilter('pending')}
+                className={`rounded-xl ${getFilterButtonClass('pending')}`}
+              >
+                Pending ({students.filter(s => s.status === 'pending').length})
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setStatusFilter('absent')}
+                className={`rounded-xl ${getFilterButtonClass('absent')}`}
+              >
+                Absent ({students.filter(s => s.status === 'absent').length})
+              </Button>
+            </div>
+
+            {/* Students per page selector */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-400">Show:</span>
+              <select
+                value={studentsPerPage}
+                onChange={(e) => setStudentsPerPage(Number(e.target.value))}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-white text-sm focus:outline-none focus:border-sky-blue/50"
+              >
+                <option value={10}>10</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-400">students</span>
+            </div>
           </div>
         </div>
       )}
@@ -126,7 +158,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {filteredStudents.map((student) => (
+            {paginatedStudents.map((student) => (
               <tr key={student.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                 <td className="py-4 px-4 text-white font-medium">{student.name}</td>
                 <td className="py-4 px-4 text-gray-400">{student.studentId}</td>
@@ -163,12 +195,73 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
           </tbody>
         </table>
         
-        {filteredStudents.length === 0 && (
+        {paginatedStudents.length === 0 && (
           <div className="text-center py-8 text-gray-400">
             No students found matching your criteria
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
+          <div className="text-sm text-gray-400">
+            Showing {((currentPage - 1) * studentsPerPage) + 1} to {Math.min(currentPage * studentsPerPage, filteredStudents.length)} of {filteredStudents.length} students
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl disabled:opacity-50"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            
+            <div className="flex space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 p-0 rounded-xl ${
+                      currentPage === pageNum
+                        ? 'bg-sky-blue/20 text-sky-blue border border-sky-blue/30'
+                        : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+                    }`}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl disabled:opacity-50"
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

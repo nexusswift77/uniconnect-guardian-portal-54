@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Sidebar } from '@/components/dashboard/Sidebar';
@@ -51,6 +50,7 @@ const Index = () => {
   const [userRole, setUserRole] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [students, setStudents] = useState<Student[]>(mockStudents);
+  const [globalSearchTerm, setGlobalSearchTerm] = useState('');
   const { toast } = useToast();
 
   const handleLogin = (email: string, password: string, role: string) => {
@@ -92,6 +92,10 @@ const Index = () => {
       description: "QR check-in has been rejected",
       variant: "destructive",
     });
+  };
+
+  const handleGlobalSearch = (searchTerm: string) => {
+    setGlobalSearchTerm(searchTerm);
   };
 
   const getPageTitle = () => {
@@ -170,7 +174,7 @@ const Index = () => {
         );
       
       case 'classes':
-        return <ClassesOverview />;
+        return <ClassesOverview globalSearchTerm={globalSearchTerm} />;
       
       case 'qr-generator':
         return <QRGenerator />;
@@ -209,6 +213,7 @@ const Index = () => {
           students={students}
           onApprove={handleApprove}
           onReject={handleReject}
+          onSearch={handleGlobalSearch}
         />
         {renderDashboardContent()}
       </div>
