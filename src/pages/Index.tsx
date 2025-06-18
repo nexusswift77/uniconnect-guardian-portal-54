@@ -7,6 +7,7 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 import { AttendanceTable } from '@/components/dashboard/AttendanceTable';
 import { QRGenerator } from '@/components/dashboard/QRGenerator';
 import { LecturerOverview } from '@/components/dashboard/LecturerOverview';
+import { ClassesOverview } from '@/components/dashboard/ClassesOverview';
 import { Users, Calendar, Clock, Monitor, Bell, Grid2X2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Student } from '@/types/student';

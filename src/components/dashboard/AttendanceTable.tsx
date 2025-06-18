@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Clock } from 'lucide-react';
+import { Check, X, Clock, Search, Filter } from 'lucide-react';
 import { Student } from '@/types/student';
 
 interface AttendanceTableProps {
@@ -10,14 +10,28 @@ interface AttendanceTableProps {
   onApprove?: (studentId: string) => void;
   onReject?: (studentId: string) => void;
   userRole: string;
+  showSearch?: boolean;
 }
 
 export const AttendanceTable: React.FC<AttendanceTableProps> = ({ 
   students, 
   onApprove, 
   onReject, 
-  userRole 
+  userRole,
+  showSearch = false
 }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'verified' | 'pending' | 'absent'>('all');
+
+  const filteredStudents = useMemo(() => {
+    return students.filter(student => {
+      const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           student.studentId.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [students, searchTerm, statusFilter]);
+
   const getStatusBadge = (status: string, method: string) => {
     if (status === 'verified') {
       return <Badge className="status-online border rounded-xl">✅ {method} Verified</Badge>;
@@ -26,6 +40,12 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
       return <Badge className="status-warning border rounded-xl">⚠️ {method} Pending</Badge>;
     }
     return <Badge className="status-offline border rounded-xl">❌ Absent</Badge>;
+  };
+
+  const getFilterButtonClass = (filterValue: string) => {
+    return statusFilter === filterValue 
+      ? 'bg-sky-blue/20 text-sky-blue border border-sky-blue/30' 
+      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10';
   };
 
   return (
@@ -45,6 +65,55 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
         </div>
       </div>
 
+      {showSearch && (
+        <div className="mb-6 space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search by name or student ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-sky-blue/50"
+            />
+          </div>
+
+          {/* Filter Buttons */}
+          <div className="flex space-x-2">
+            <Button
+              size="sm"
+              onClick={() => setStatusFilter('all')}
+              className={`rounded-xl ${getFilterButtonClass('all')}`}
+            >
+              <Filter className="w-4 h-4 mr-1" />
+              All ({students.length})
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setStatusFilter('verified')}
+              className={`rounded-xl ${getFilterButtonClass('verified')}`}
+            >
+              Present ({students.filter(s => s.status === 'verified').length})
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setStatusFilter('pending')}
+              className={`rounded-xl ${getFilterButtonClass('pending')}`}
+            >
+              Pending ({students.filter(s => s.status === 'pending').length})
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setStatusFilter('absent')}
+              className={`rounded-xl ${getFilterButtonClass('absent')}`}
+            >
+              Absent ({students.filter(s => s.status === 'absent').length})
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -57,7 +126,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {students.map((student) => (
+            {filteredStudents.map((student) => (
               <tr key={student.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                 <td className="py-4 px-4 text-white font-medium">{student.name}</td>
                 <td className="py-4 px-4 text-gray-400">{student.studentId}</td>
@@ -93,6 +162,12 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
             ))}
           </tbody>
         </table>
+        
+        {filteredStudents.length === 0 && (
+          <div className="text-center py-8 text-gray-400">
+            No students found matching your criteria
+          </div>
+        )}
       </div>
     </div>
   );

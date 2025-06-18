@@ -1,14 +1,25 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Bell, Search, User } from 'lucide-react';
+import { Search, User } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
+import { Student } from '@/types/student';
 
 interface DashboardHeaderProps {
   userRole: string;
   title: string;
+  students?: Student[];
+  onApprove?: (studentId: string) => void;
+  onReject?: (studentId: string) => void;
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ userRole, title }) => {
+export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ 
+  userRole, 
+  title, 
+  students = [],
+  onApprove,
+  onReject 
+}) => {
   return (
     <div className="glass-card p-6 mb-8">
       <div className="flex items-center justify-between">
@@ -28,10 +39,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ userRole, titl
           <Button variant="ghost" size="sm" className="glass-button p-3">
             <Search className="w-5 h-5 text-sky-blue" />
           </Button>
-          <Button variant="ghost" size="sm" className="glass-button p-3 relative">
-            <Bell className="w-5 h-5 text-sky-blue" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-          </Button>
+          <NotificationBell 
+            students={students}
+            onApprove={onApprove}
+            onReject={onReject}
+          />
           <Button variant="ghost" size="sm" className="glass-button p-3">
             <User className="w-5 h-5 text-sky-blue" />
           </Button>
