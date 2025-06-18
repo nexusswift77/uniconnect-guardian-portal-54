@@ -7,6 +7,7 @@ import { AttendanceTable } from '@/components/dashboard/AttendanceTable';
 import { QRGenerator } from '@/components/dashboard/QRGenerator';
 import { LecturerOverview } from '@/components/dashboard/LecturerOverview';
 import { ClassesOverview } from '@/components/dashboard/ClassesOverview';
+import { ReportsPage } from '@/components/dashboard/ReportsPage';
 import { Users, Calendar, Clock, Monitor, Bell, Grid2X2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Student } from '@/types/student';
@@ -51,6 +52,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [students, setStudents] = useState<Student[]>(mockStudents);
   const [globalSearchTerm, setGlobalSearchTerm] = useState('');
+  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'present'>('all');
   const { toast } = useToast();
 
   const handleLogin = (email: string, password: string, role: string) => {
@@ -98,6 +100,11 @@ const Index = () => {
     setGlobalSearchTerm(searchTerm);
   };
 
+  const handleMetricCardClick = (filter: 'all' | 'present') => {
+    setAttendanceFilter(filter);
+    setActiveTab('attendance');
+  };
+
   const getPageTitle = () => {
     const titles = {
       dashboard: 'Dashboard Overview',
@@ -114,6 +121,13 @@ const Index = () => {
     return titles[activeTab as keyof typeof titles] || 'Dashboard';
   };
 
+  const getFilteredStudentsForTable = () => {
+    if (attendanceFilter === 'present') {
+      return students.filter(s => s.status === 'verified');
+    }
+    return students;
+  };
+
   const renderDashboardContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -127,6 +141,8 @@ const Index = () => {
                 trend="up" 
                 icon={Users} 
                 color="blue"
+                onClick={() => handleMetricCardClick('all')}
+                className="cursor-pointer"
               />
               <MetricCard 
                 title="Present Today" 
@@ -135,6 +151,8 @@ const Index = () => {
                 trend="up" 
                 icon={Calendar} 
                 color="green"
+                onClick={() => handleMetricCardClick('present')}
+                className="cursor-pointer"
               />
               <MetricCard 
                 title="Attendance Rate" 
@@ -165,7 +183,7 @@ const Index = () => {
       case 'attendance':
         return (
           <AttendanceTable 
-            students={students} 
+            students={getFilteredStudentsForTable()} 
             onApprove={handleApprove}
             onReject={handleReject}
             userRole={userRole}
@@ -179,6 +197,9 @@ const Index = () => {
       
       case 'qr-generator':
         return <QRGenerator />;
+      
+      case 'reports':
+        return <ReportsPage />;
       
       case 'lecturers':
         return <LecturerOverview />;
@@ -216,6 +237,7 @@ const Index = () => {
           onReject={handleReject}
           onSearch={handleGlobalSearch}
           activeTab={activeTab}
+          onLogout={handleLogout}
         />
         {renderDashboardContent()}
       </div>
