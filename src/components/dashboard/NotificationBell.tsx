@@ -38,7 +38,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-gray-900/95 backdrop-blur-sm border border-white/10 rounded-xl shadow-lg z-50">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-gray-900/95 backdrop-blur-sm border border-white/10 rounded-xl shadow-lg z-[9999]">
           <div className="p-4 border-b border-white/10">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-white">Pending Approvals</h3>
