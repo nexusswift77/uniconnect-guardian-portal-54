@@ -12,13 +12,38 @@ import { Users, Calendar, Clock, Monitor, Bell, Grid2X2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Student } from '@/types/student';
 
-// Mock data
+// Mock data with 30 students
 const mockStudents: Student[] = [
   { id: '1', name: 'Alice Johnson', studentId: 'ST001', checkInTime: '09:02 AM', method: 'BLE', status: 'verified' },
   { id: '2', name: 'Bob Smith', studentId: 'ST002', checkInTime: '09:05 AM', method: 'QR', status: 'pending' },
   { id: '3', name: 'Carol Davis', studentId: 'ST003', checkInTime: '09:01 AM', method: 'BLE', status: 'verified' },
   { id: '4', name: 'David Wilson', studentId: 'ST004', method: 'Absent', status: 'absent' },
   { id: '5', name: 'Eva Brown', studentId: 'ST005', checkInTime: '09:03 AM', method: 'BLE', status: 'verified' },
+  { id: '6', name: 'Frank Miller', studentId: 'ST006', checkInTime: '09:07 AM', method: 'QR', status: 'pending' },
+  { id: '7', name: 'Grace Lee', studentId: 'ST007', checkInTime: '09:00 AM', method: 'BLE', status: 'verified' },
+  { id: '8', name: 'Henry Taylor', studentId: 'ST008', checkInTime: '09:04 AM', method: 'BLE', status: 'verified' },
+  { id: '9', name: 'Ivy Chen', studentId: 'ST009', method: 'Absent', status: 'absent' },
+  { id: '10', name: 'Jack Thompson', studentId: 'ST010', checkInTime: '09:06 AM', method: 'QR', status: 'pending' },
+  { id: '11', name: 'Kate Anderson', studentId: 'ST011', checkInTime: '09:02 AM', method: 'BLE', status: 'verified' },
+  { id: '12', name: 'Liam Rodriguez', studentId: 'ST012', checkInTime: '09:08 AM', method: 'BLE', status: 'verified' },
+  { id: '13', name: 'Maya Patel', studentId: 'ST013', method: 'Absent', status: 'absent' },
+  { id: '14', name: 'Noah Garcia', studentId: 'ST014', checkInTime: '09:03 AM', method: 'QR', status: 'pending' },
+  { id: '15', name: 'Olivia Wright', studentId: 'ST015', checkInTime: '09:01 AM', method: 'BLE', status: 'verified' },
+  { id: '16', name: 'Parker Kim', studentId: 'ST016', checkInTime: '09:05 AM', method: 'BLE', status: 'verified' },
+  { id: '17', name: 'Quinn Foster', studentId: 'ST017', method: 'Absent', status: 'absent' },
+  { id: '18', name: 'Ruby Martinez', studentId: 'ST018', checkInTime: '09:07 AM', method: 'QR', status: 'pending' },
+  { id: '19', name: 'Sam Cooper', studentId: 'ST019', checkInTime: '09:02 AM', method: 'BLE', status: 'verified' },
+  { id: '20', name: 'Tara Johnson', studentId: 'ST020', checkInTime: '09:04 AM', method: 'BLE', status: 'verified' },
+  { id: '21', name: 'Ulysses King', studentId: 'ST021', method: 'Absent', status: 'absent' },
+  { id: '22', name: 'Vera Lopez', studentId: 'ST022', checkInTime: '09:06 AM', method: 'QR', status: 'pending' },
+  { id: '23', name: 'Wade Scott', studentId: 'ST023', checkInTime: '09:01 AM', method: 'BLE', status: 'verified' },
+  { id: '24', name: 'Xara Bell', studentId: 'ST024', checkInTime: '09:08 AM', method: 'BLE', status: 'verified' },
+  { id: '25', name: 'Yuki Tanaka', studentId: 'ST025', method: 'Absent', status: 'absent' },
+  { id: '26', name: 'Zoe Adams', studentId: 'ST026', checkInTime: '09:03 AM', method: 'QR', status: 'pending' },
+  { id: '27', name: 'Aaron Brooks', studentId: 'ST027', checkInTime: '09:05 AM', method: 'BLE', status: 'verified' },
+  { id: '28', name: 'Bella Cruz', studentId: 'ST028', checkInTime: '09:02 AM', method: 'BLE', status: 'verified' },
+  { id: '29', name: 'Carlos Rivera', studentId: 'ST029', method: 'Absent', status: 'absent' },
+  { id: '30', name: 'Diana Foster', studentId: 'ST030', checkInTime: '09:07 AM', method: 'QR', status: 'pending' },
 ];
 
 const Index = () => {
@@ -93,7 +118,7 @@ const Index = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <MetricCard 
                 title="Total Students" 
-                value="156" 
+                value="30" 
                 change="12%" 
                 trend="up" 
                 icon={Users} 
@@ -101,7 +126,7 @@ const Index = () => {
               />
               <MetricCard 
                 title="Present Today" 
-                value="142" 
+                value={students.filter(s => s.status === 'verified').length.toString()} 
                 change="8%" 
                 trend="up" 
                 icon={Calendar} 
@@ -109,7 +134,7 @@ const Index = () => {
               />
               <MetricCard 
                 title="Attendance Rate" 
-                value="91%" 
+                value={`${Math.round((students.filter(s => s.status === 'verified').length / students.length) * 100)}%`}
                 change="3%" 
                 trend="up" 
                 icon={Clock} 
@@ -128,6 +153,7 @@ const Index = () => {
               onApprove={handleApprove}
               onReject={handleReject}
               userRole={userRole}
+              showSearch={true}
             />
           </div>
         );
@@ -139,8 +165,12 @@ const Index = () => {
             onApprove={handleApprove}
             onReject={handleReject}
             userRole={userRole}
+            showSearch={true}
           />
         );
+      
+      case 'classes':
+        return <ClassesOverview />;
       
       case 'qr-generator':
         return <QRGenerator />;
@@ -173,7 +203,13 @@ const Index = () => {
       />
       
       <div className="flex-1 p-8 overflow-auto">
-        <DashboardHeader userRole={userRole} title={getPageTitle()} />
+        <DashboardHeader 
+          userRole={userRole} 
+          title={getPageTitle()}
+          students={students}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
         {renderDashboardContent()}
       </div>
     </div>

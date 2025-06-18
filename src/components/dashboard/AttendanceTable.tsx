@@ -18,7 +18,7 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
   onApprove, 
   onReject, 
   userRole,
-  showSearch = false
+  showSearch = true
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'verified' | 'pending' | 'absent'>('all');
