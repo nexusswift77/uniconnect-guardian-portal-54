@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ interface AttendanceTableProps {
   onReject?: (studentId: string) => void;
   userRole: string;
   showSearch?: boolean;
+  globalSearchTerm?: string;
 }
 
 export const AttendanceTable: React.FC<AttendanceTableProps> = ({ 
@@ -18,21 +18,25 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
   onApprove, 
   onReject, 
   userRole,
-  showSearch = true
+  showSearch = true,
+  globalSearchTerm = ''
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'verified' | 'pending' | 'absent'>('all');
   const [studentsPerPage, setStudentsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Use global search term if provided, otherwise use local search
+  const effectiveSearchTerm = globalSearchTerm || searchTerm;
+
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
-      const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           student.studentId.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = student.name.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
+                           student.studentId.toLowerCase().includes(effectiveSearchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [students, searchTerm, statusFilter]);
+  }, [students, effectiveSearchTerm, statusFilter]);
 
   const paginatedStudents = useMemo(() => {
     const startIndex = (currentPage - 1) * studentsPerPage;
@@ -80,7 +84,8 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
         </div>
       </div>
 
-      {showSearch && (
+      {/* Only show local search if no global search is active */}
+      {showSearch && !globalSearchTerm && (
         <div className="mb-6 space-y-4">
           {/* Search Bar */}
           <div className="relative">
@@ -95,6 +100,72 @@ export const AttendanceTable: React.FC<AttendanceTableProps> = ({
           </div>
 
           {/* Filter Buttons */}
+          <div className="flex items-center justify-between">
+            <div className="flex space-x-2">
+              <Button
+                size="sm"
+                onClick={() => setStatusFilter('all')}
+                className={`rounded-xl ${getFilterButtonClass('all')}`}
+              >
+                <Filter className="w-4 h-4 mr-1" />
+                All ({students.length})
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setStatusFilter('verified')}
+                className={`rounded-xl ${getFilterButtonClass('verified')}`}
+              >
+                Present ({students.filter(s => s.status === 'verified').length})
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setStatusFilter('pending')}
+                className={`rounded-xl ${getFilterButtonClass('pending')}`}
+              >
+                Pending ({students.filter(s => s.status === 'pending').length})
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setStatusFilter('absent')}
+                className={`rounded-xl ${getFilterButtonClass('absent')}`}
+              >
+                Absent ({students.filter(s => s.status === 'absent').length})
+              </Button>
+            </div>
+
+            {/* Students per page selector */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-400">Show:</span>
+              <select
+                value={studentsPerPage}
+                onChange={(e) => setStudentsPerPage(Number(e.target.value))}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-white text-sm focus:outline-none focus:border-sky-blue/50"
+              >
+                <option value={10}>10</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-400">students</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Show global search indicator */}
+      {globalSearchTerm && (
+        <div className="mb-6">
+          <div className="glass-card p-4">
+            <p className="text-white">
+              Search results for: <span className="text-sky-blue font-semibold">"{globalSearchTerm}"</span>
+              {filteredStudents.length === 0 && <span className="text-gray-400 ml-2">No students found</span>}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Filter buttons for global search */}
+      {globalSearchTerm && (
+        <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="flex space-x-2">
               <Button

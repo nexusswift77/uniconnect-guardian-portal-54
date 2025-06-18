@@ -12,6 +12,7 @@ interface DashboardHeaderProps {
   onApprove?: (studentId: string) => void;
   onReject?: (studentId: string) => void;
   onSearch?: (searchTerm: string) => void;
+  activeTab: string;
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ 
@@ -20,7 +21,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   students = [],
   onApprove,
   onReject,
-  onSearch 
+  onSearch,
+  activeTab
 }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +36,19 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     setShowSearch(false);
     setSearchTerm('');
     onSearch?.('');
+  };
+
+  // Only show search on classes and attendance tabs
+  const showSearchButton = activeTab === 'classes' || activeTab === 'attendance';
+  
+  const getSearchPlaceholder = () => {
+    if (activeTab === 'classes') {
+      return 'Search classes...';
+    }
+    if (activeTab === 'attendance') {
+      return 'Search students...';
+    }
+    return 'Search...';
   };
 
   return (
@@ -52,37 +67,39 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </div>
         
         <div className="flex items-center space-x-4">
-          {showSearch ? (
-            <form onSubmit={handleSearchSubmit} className="flex items-center space-x-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search students..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-sky-blue/50 w-64"
-                  autoFocus
-                />
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSearchClose}
-                className="glass-button p-2"
+          {showSearchButton && (
+            showSearch ? (
+              <form onSubmit={handleSearchSubmit} className="flex items-center space-x-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder={getSearchPlaceholder()}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-sky-blue/50 w-64"
+                    autoFocus
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSearchClose}
+                  className="glass-button p-2"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </Button>
+              </form>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="glass-button p-3"
+                onClick={() => setShowSearch(true)}
               >
-                <X className="w-4 h-4 text-gray-400" />
+                <Search className="w-5 h-5 text-sky-blue" />
               </Button>
-            </form>
-          ) : (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="glass-button p-3"
-              onClick={() => setShowSearch(true)}
-            >
-              <Search className="w-5 h-5 text-sky-blue" />
-            </Button>
+            )
           )}
           <NotificationBell 
             students={students}

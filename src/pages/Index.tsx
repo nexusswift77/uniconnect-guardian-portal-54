@@ -170,6 +170,7 @@ const Index = () => {
             onReject={handleReject}
             userRole={userRole}
             showSearch={true}
+            globalSearchTerm={globalSearchTerm}
           />
         );
       
@@ -214,6 +215,7 @@ const Index = () => {
           onApprove={handleApprove}
           onReject={handleReject}
           onSearch={handleGlobalSearch}
+          activeTab={activeTab}
         />
         {renderDashboardContent()}
       </div>
