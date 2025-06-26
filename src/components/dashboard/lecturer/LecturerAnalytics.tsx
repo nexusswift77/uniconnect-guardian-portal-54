@@ -21,7 +21,7 @@ interface SimpleCourseStats {
   totalStudents: number;
   totalSessions: number;
   averageAttendance: number;
-  recentSessions: Array<{
+  recentAttendanceTrend: Array<{
     date: string;
     present: number;
     total: number;
