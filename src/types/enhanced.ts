@@ -1,4 +1,4 @@
-// Enhanced TypeScript interfaces for UniConnect Admin Dashboard
+// Enhanced TypeScript interfaces for T-Check Admin Dashboard
 // These interfaces map directly to our database schema
 
 export interface School {

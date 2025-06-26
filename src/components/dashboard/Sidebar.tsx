@@ -56,11 +56,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole, activeTab, onTabChan
     <div className="sidebar-glass w-80 h-screen p-6 flex flex-col">
       <div className="mb-8">
         <div className="flex items-center space-x-3 mb-2">
-          <div className="w-12 h-12 bg-sky-blue/20 rounded-2xl flex items-center justify-center">
-            <span className="text-lg font-bold text-sky-blue">UC</span>
+          <div className="w-12 h-12">
+            <img 
+              src="/t-check-logo.svg" 
+              alt="T-Check Logo" 
+              className="w-full h-full"
+            />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">UniConnect</h1>
+            <h1 className="text-xl font-bold text-white">T-Check</h1>
             <p className="text-sm text-gray-400 capitalize">{userRole.replace('_', ' ')} Panel</p>
           </div>
         </div>

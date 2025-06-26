@@ -25,6 +25,7 @@ import {
   Signal,
   Loader2
 } from 'lucide-react';
+import QRCodeDisplay from '@/components/ui/QRCodeDisplay';
 
 interface MyCoursesProps {
   user: EnhancedUser;
@@ -193,64 +194,97 @@ const MyCourses: React.FC<MyCoursesProps> = ({ user, courses, onUpdate }) => {
           const beaconStatus = getBeaconStatus(course.beacon);
           
           return (
-            <Card key={course.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
+            <Card key={course.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-400 bg-gray-800 border-gray-700">
+              <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{course.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{course.code}</p>
-                    {course.department && (
-                      <p className="text-xs text-muted-foreground mt-1">{course.department}</p>
-                    )}
+                  <div className="flex-1">
+                    <CardTitle className="text-xl font-bold text-white mb-1">{course.name}</CardTitle>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <Badge variant="secondary" className="font-medium bg-gray-700 text-gray-200 border-gray-600">
+                        {course.code}
+                      </Badge>
+                      {course.department && (
+                        <span className="text-sm text-gray-400">{course.department}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end space-y-1">
+                  <div className="flex flex-col items-end space-y-2">
                     {activeSession && (
-                      <Badge variant="default" className="bg-green-600">
+                      <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white">
                         <Play className="mr-1 h-3 w-3" />
-                        Active
+                        Live Session
                       </Badge>
                     )}
                     {course.beacon && (
-                      <Badge variant="outline">
+                      <Badge variant="outline" className="border-blue-400 text-blue-300 bg-blue-900/30">
                         <Wifi className="mr-1 h-3 w-3" />
-                        Beacon
+                        Beacon Enabled
                       </Badge>
                     )}
                   </div>
                 </div>
               </CardHeader>
               
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 {/* Course Info */}
-                <div className="grid grid-cols-1 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Max Students:</span> {course.maxStudents}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Users className="h-4 w-4 text-blue-400" />
+                    <span className="text-sm text-gray-300">
+                      <span className="font-medium text-white">Max Students:</span> {course.maxStudents}
+                    </span>
                   </div>
                   {course.location && (
-                    <div className="col-span-2 flex items-center space-x-1">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span>{course.location}</span>
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4 text-green-400" />
+                      <span className="text-sm font-medium text-gray-300">{course.location}</span>
+                    </div>
+                  )}
+                  {course.semester && (
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-purple-400" />
+                      <span className="text-sm text-gray-300">
+                        <span className="font-medium text-white">Semester:</span> {course.semester}
+                      </span>
+                    </div>
+                  )}
+                  {course.academicYear && (
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-4 w-4 text-orange-400" />
+                      <span className="text-sm text-gray-300">
+                        <span className="font-medium text-white">Year:</span> {course.academicYear}
+                      </span>
                     </div>
                   )}
                 </div>
 
                 {/* Beacon Status */}
                 {beaconStatus && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">Beacon Status</span>
-                      <Badge variant={beaconStatus.status === 'active' ? 'default' : 'secondary'}>
+                  <div className="p-4 bg-gradient-to-r from-blue-900/30 to-indigo-900/30 rounded-lg border border-blue-600/50">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Wifi className="h-4 w-4 text-blue-400" />
+                        <span className="font-semibold text-white">Beacon Status</span>
+                      </div>
+                      <Badge 
+                        variant={beaconStatus.status === 'active' ? 'default' : 'secondary'}
+                        className={beaconStatus.status === 'active' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300'}
+                      >
                         {beaconStatus.status}
                       </Badge>
                     </div>
-                    <div className="mt-2 flex items-center space-x-4 text-xs">
-                      <div className="flex items-center space-x-1">
-                        <Battery className="h-3 w-3" />
-                        <span>{beaconStatus.battery}%</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Battery className={`h-4 w-4 ${beaconStatus.battery > 50 ? 'text-green-400' : beaconStatus.battery > 20 ? 'text-yellow-400' : 'text-red-400'}`} />
+                        <span className="text-sm font-medium text-gray-300">
+                          Battery: {beaconStatus.battery}%
+                        </span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Signal className="h-3 w-3" />
-                        <span>{beaconStatus.signal}dBm</span>
+                      <div className="flex items-center space-x-2">
+                        <Signal className={`h-4 w-4 ${beaconStatus.signal > -50 ? 'text-green-400' : beaconStatus.signal > -70 ? 'text-yellow-400' : 'text-red-400'}`} />
+                        <span className="text-sm font-medium text-gray-300">
+                          Signal: {beaconStatus.signal}dBm
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -258,22 +292,34 @@ const MyCourses: React.FC<MyCoursesProps> = ({ user, courses, onUpdate }) => {
 
                 {/* Active Session Info */}
                 {activeSession && (
-                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-green-800">Session Active</p>
-                        <p className="text-sm text-green-600">
-                          Started: {new Date(activeSession.startTime).toLocaleTimeString()}
-                        </p>
-                        {activeSession.location && (
-                          <p className="text-sm text-green-600">📍 {activeSession.location}</p>
-                        )}
+                  <div className="p-4 bg-gradient-to-r from-green-900/40 to-emerald-900/40 rounded-lg border-2 border-green-500/50">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div className="h-2 w-2 bg-green-400 rounded-full animate-pulse"></div>
+                          <p className="font-bold text-green-300 text-lg">Live Session Active</p>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2 text-green-200">
+                            <Clock className="h-4 w-4" />
+                            <span className="text-sm font-medium">
+                              Started: {new Date(activeSession.startTime).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          {activeSession.location && (
+                            <div className="flex items-center space-x-2 text-green-200">
+                              <MapPin className="h-4 w-4" />
+                              <span className="text-sm font-medium">{activeSession.location}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-col space-y-2">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleToggleQR(activeSession.id, !activeSession.qrCodeActive)}
+                          className="border-green-400 text-green-300 hover:bg-green-700/30 bg-green-900/20"
                         >
                           <QrCode className="mr-1 h-3 w-3" />
                           {activeSession.qrCodeActive ? 'Disable QR' : 'Enable QR'}
@@ -282,19 +328,25 @@ const MyCourses: React.FC<MyCoursesProps> = ({ user, courses, onUpdate }) => {
                           size="sm"
                           variant="destructive"
                           onClick={() => handleEndSession(activeSession.id)}
+                          className="bg-red-600 hover:bg-red-700 text-white"
                         >
                           <Square className="mr-1 h-3 w-3" />
-                          End
+                          End Session
                         </Button>
                       </div>
                     </div>
                     
-                    {activeSession.qrCodeActive && (
-                      <div className="mt-2 p-2 bg-white rounded border">
-                        <p className="text-xs text-center text-gray-600">QR Code Active</p>
-                        <div className="mt-1 h-20 bg-gray-100 rounded flex items-center justify-center">
-                          <QrCode className="h-8 w-8 text-gray-400" />
-                        </div>
+                    {activeSession && (
+                      <div className="mt-3">
+                        <QRCodeDisplay
+                          sessionId={activeSession.id}
+                          courseId={course.id}
+                          courseCode={course.code}
+                          courseName={course.name}
+                          isActive={activeSession.qrCodeActive}
+                          expiresAt={activeSession.qrCodeExpiresAt}
+                          onRefresh={loadActiveSessions}
+                        />
                       </div>
                     )}
                   </div>
@@ -302,17 +354,17 @@ const MyCourses: React.FC<MyCoursesProps> = ({ user, courses, onUpdate }) => {
 
                 {/* Course Description */}
                 {course.description && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">{course.description}</p>
+                  <div className="p-3 bg-gray-700 rounded-lg border border-gray-600">
+                    <p className="text-sm text-gray-300 leading-relaxed">{course.description}</p>
                   </div>
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex space-x-2">
+                <div className="flex space-x-3 pt-2">
                   {!activeSession ? (
                     <Button
                       onClick={() => openSessionDialog(course)}
-                      className="flex-1"
+                      className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-2.5"
                     >
                       <Play className="mr-2 h-4 w-4" />
                       Start Session
@@ -321,7 +373,7 @@ const MyCourses: React.FC<MyCoursesProps> = ({ user, courses, onUpdate }) => {
                     <Button
                       variant="outline"
                       onClick={() => {/* Navigate to attendance management */}}
-                      className="flex-1"
+                      className="flex-1 border-blue-400 text-blue-300 hover:bg-blue-700/30 bg-blue-900/20 font-semibold py-2.5"
                     >
                       <Users className="mr-2 h-4 w-4" />
                       View Attendance
@@ -331,6 +383,7 @@ const MyCourses: React.FC<MyCoursesProps> = ({ user, courses, onUpdate }) => {
                   <Button
                     variant="outline"
                     onClick={() => {/* Navigate to course settings */}}
+                    className="border-gray-600 hover:bg-gray-700 bg-gray-800 text-gray-300 px-4"
                   >
                     <Settings className="h-4 w-4" />
                   </Button>
@@ -343,12 +396,12 @@ const MyCourses: React.FC<MyCoursesProps> = ({ user, courses, onUpdate }) => {
 
       {/* Empty State */}
       {courses.length === 0 && (
-        <Card>
+        <Card className="bg-gray-800 border-gray-700">
           <CardContent className="py-8">
             <div className="text-center">
-              <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-medium">No courses assigned</h3>
-              <p className="text-muted-foreground">You don't have any courses assigned yet.</p>
+              <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-4 text-lg font-medium text-white">No courses assigned</h3>
+              <p className="text-gray-400">You don't have any courses assigned yet.</p>
             </div>
           </CardContent>
         </Card>

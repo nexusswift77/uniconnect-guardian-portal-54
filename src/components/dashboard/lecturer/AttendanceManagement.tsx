@@ -19,13 +19,9 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Calendar,
   MapPin,
   Search,
-  Download,
-  Eye,
-  Edit,
-  BarChart3
+  Eye
 } from 'lucide-react';
 
 interface AttendanceManagementProps {
@@ -35,12 +31,9 @@ interface AttendanceManagementProps {
 const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ user }) => {
   const [courses, setCourses] = useState<EnhancedCourse[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
-  const [sessions, setSessions] = useState<EnhancedClassSession[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<EnhancedAttendanceRecord[]>([]);
   const [activeSessions, setActiveSessions] = useState<EnhancedClassSession[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedSession, setSelectedSession] = useState<EnhancedClassSession | null>(null);
   const [showSessionDialog, setShowSessionDialog] = useState(false);
@@ -49,12 +42,6 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ user }) => 
     loadCourses();
     loadActiveSessions();
   }, [user.id]);
-
-  useEffect(() => {
-    if (selectedCourse) {
-      loadSessions();
-    }
-  }, [selectedCourse, dateFilter]);
 
   useEffect(() => {
     if (selectedSession) {
@@ -83,19 +70,7 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ user }) => 
     }
   };
 
-  const loadSessions = async () => {
-    if (!selectedCourse) return;
-    
-    try {
-      setLoading(true);
-      const sessions = await AttendanceService.getCourseClassSessions(selectedCourse, 50);
-      setSessions(sessions as unknown as EnhancedClassSession[]);
-    } catch (error) {
-      console.error('Error loading sessions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const loadAttendanceRecords = async () => {
     if (!selectedSession) return;
@@ -126,7 +101,6 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ user }) => 
 
       await AttendanceService.startClassSession(sessionData);
       loadActiveSessions();
-      loadSessions();
     } catch (error) {
       console.error('Error starting session:', error);
     }
@@ -136,7 +110,6 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ user }) => 
     try {
       await AttendanceService.endClassSession(sessionId);
       loadActiveSessions();
-      loadSessions();
     } catch (error) {
       console.error('Error ending session:', error);
     }
@@ -146,7 +119,6 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ user }) => 
     try {
       await AttendanceService.toggleQRCode(sessionId, active);
       loadActiveSessions();
-      loadSessions();
     } catch (error) {
       console.error('Error toggling QR code:', error);
     }
@@ -295,15 +267,7 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ user }) => 
               </Select>
             </div>
             
-            <div className="min-w-[150px]">
-              <Label htmlFor="date-filter">Filter by Date</Label>
-              <Input
-                id="date-filter"
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-              />
-            </div>
+
             
             <Button
               onClick={() => selectedCourse && handleStartSession(selectedCourse)}
@@ -352,74 +316,7 @@ const AttendanceManagement: React.FC<AttendanceManagementProps> = ({ user }) => 
         </Card>
       )}
 
-      {/* Sessions List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Class Sessions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading sessions...</div>
-          ) : sessions.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No sessions found</h3>
-              <p className="text-muted-foreground">
-                {selectedCourse 
-                  ? "No sessions have been created for this course yet."
-                  : "Please select a course to view sessions."}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {sessions.map((session) => (
-                <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-muted rounded">
-                      <Calendar className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="font-medium">{formatDate(session.sessionDate)}</span>
-                        <Badge variant="outline">{session.sessionType}</Badge>
-                        {session.qrCodeActive && <Badge variant="secondary">QR Active</Badge>}
-                        {session.beaconEnabled && <Badge variant="secondary">Beacon Enabled</Badge>}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {formatTime(session.startTime)} - {session.endTime ? formatTime(session.endTime) : 'In Progress'}
-                        {session.location && ` • ${session.location}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedSession(session);
-                        setShowSessionDialog(true);
-                      }}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      View Attendance
-                    </Button>
-                    {!session.endTime && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleEndSession(session.id)}
-                      >
-                        <Square className="mr-2 h-4 w-4" />
-                        End Session
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
 
       {/* Session Attendance Dialog */}
       <Dialog open={showSessionDialog} onOpenChange={setShowSessionDialog}>

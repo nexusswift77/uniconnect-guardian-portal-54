@@ -7,13 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useAuth } from '../../contexts/AuthContext';
 import { Alert, AlertDescription } from '../ui/alert';
 import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
-
-interface SchoolOption {
-  id: string;
-  name: string;
-  address: string;
-}
+import { SchoolService } from '@/services/schoolService';
+import { School } from '@/types/enhanced';
 
 interface SignupFormProps {
   onSwitchToLogin: () => void;
@@ -33,7 +28,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [schools, setSchools] = useState<SchoolOption[]>([]);
+  const [schools, setSchools] = useState<School[]>([]);
   const [loadingSchools, setLoadingSchools] = useState(false);
   
   const { signUp } = useAuth();
@@ -44,20 +39,33 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
 
   const fetchSchools = async () => {
     try {
+      console.log('🔍 Starting to fetch schools...');
       setLoadingSchools(true);
-      const { data, error } = await supabase
-        .from('schools')
-        .select('id, name, address')
-        .eq('status', 'active')
-        .order('name');
-
-      if (error) throw error;
-      setSchools(data || []);
+      setError(''); // Clear any previous errors
+      
+      const response = await SchoolService.getActiveSchools();
+      console.log('📡 SchoolService response:', response);
+      
+      if (response.error) {
+        console.error('❌ Error from SchoolService:', response.error);
+        setError(`Failed to load schools: ${response.error}`);
+        return;
+      }
+      
+      console.log('✅ Schools fetched successfully:', response.data);
+      console.log('📊 Number of schools:', response.data.length);
+      setSchools(response.data);
+      
+      if (response.data.length === 0) {
+        console.warn('⚠️ No active schools found in database');
+        setError('No active schools available. Please contact the system administrator.');
+      }
     } catch (err) {
-      console.error('Error fetching schools:', err);
-      setError('Failed to load schools. Please refresh the page.');
+      console.error('💥 Exception while fetching schools:', err);
+      setError(`Network error while loading schools: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setLoadingSchools(false);
+      console.log('🏁 School fetching complete');
     }
   };
 
@@ -122,10 +130,14 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
       <div className="w-full max-w-md">
         <Card className="glass-card p-8 border-sky-blue/20">
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-sky-blue/20 rounded-3xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl font-bold text-sky-blue">UC</span>
+            <div className="w-20 h-20 rounded-3xl overflow-hidden mx-auto mb-4">
+              <img 
+                src="/Tcheck.jpg" 
+                alt="T-Check Logo" 
+                className="w-full h-full object-cover"
+              />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Join UniConnect</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">Join T-Check</h1>
             <p className="text-gray-400">Create your admin account</p>
           </div>
 

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   BookOpen, 
   Users, 
@@ -16,7 +17,8 @@ import {
   UserCheck,
   BarChart3,
   QrCode,
-  Wifi
+  Wifi,
+  LogOut
 } from 'lucide-react';
 
 // Import lecturer-specific components
@@ -34,6 +36,7 @@ const LecturerDashboard: React.FC<LecturerDashboardProps> = ({
   user,
   onRefresh
 }) => {
+  const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'attendance' | 'requests' | 'analytics'>('overview');
   const [myCourses, setMyCourses] = useState<EnhancedCourse[]>([]);
   const [pendingRequests, setPendingRequests] = useState<CourseEnrollmentRequest[]>([]);
@@ -78,21 +81,42 @@ const LecturerDashboard: React.FC<LecturerDashboardProps> = ({
     loadLecturerData();
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   const renderOverview = () => (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-lg">
-        <h1 className="text-2xl font-bold mb-2">
-          Welcome back, {user.firstName}!
-        </h1>
-        <p className="text-purple-100">
-          Lecturer Dashboard - Manage your courses and track attendance
-        </p>
-        {user.department && (
-          <p className="text-purple-200 text-sm mt-1">
-            Department: {user.department}
-          </p>
-        )}
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">
+              Welcome back, {user.firstName}!
+            </h1>
+            <p className="text-purple-100">
+              Lecturer Dashboard - Manage your courses and track attendance
+            </p>
+            {user.department && (
+              <p className="text-purple-200 text-sm mt-1">
+                Department: {user.department}
+              </p>
+            )}
+          </div>
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            size="sm"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats Cards */}

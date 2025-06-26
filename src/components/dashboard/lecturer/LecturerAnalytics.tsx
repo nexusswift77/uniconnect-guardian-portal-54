@@ -2,177 +2,131 @@ import React, { useState, useEffect } from 'react';
 import { EnhancedUser, EnhancedCourse } from '@/types/enhanced';
 import { CourseService, AttendanceService } from '@/services';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   BarChart3, 
   Users, 
-  TrendingUp, 
-  TrendingDown,
   Calendar,
-  Clock,
   BookOpen,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  Target,
-  Award,
-  Activity
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 
 interface LecturerAnalyticsProps {
   user: EnhancedUser;
 }
 
-interface CourseAnalytics {
-  courseId: string;
-  courseName: string;
-  courseCode: string;
+interface SimpleCourseStats {
   totalStudents: number;
   totalSessions: number;
   averageAttendance: number;
-  attendanceTrend: 'up' | 'down' | 'stable';
-  lastSessionDate: string;
-  topPerformers: Array<{
-    studentId: string;
-    studentName: string;
-    attendanceRate: number;
-  }>;
-  lowPerformers: Array<{
-    studentId: string;
-    studentName: string;
-    attendanceRate: number;
-  }>;
-  weeklyData: Array<{
-    week: string;
-    attendanceRate: number;
-    sessionsCount: number;
+  recentSessions: Array<{
+    date: string;
+    present: number;
+    total: number;
+    rate: number;
   }>;
 }
 
-interface OverallAnalytics {
+interface OverallStats {
   totalCourses: number;
-  totalStudents: number;
-  totalSessions: number;
-  overallAttendanceRate: number;
-  activeCourses: number;
-  thisWeekSessions: number;
-  thisWeekAttendance: number;
-  monthlyTrend: 'up' | 'down' | 'stable';
+  totalStudentsAcrossAllCourses: number;
+  totalSessionsThisWeek: number;
+  averageAttendanceAcrossAllCourses: number;
 }
 
 const LecturerAnalytics: React.FC<LecturerAnalyticsProps> = ({ user }) => {
   const [courses, setCourses] = useState<EnhancedCourse[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
-  const [overallAnalytics, setOverallAnalytics] = useState<OverallAnalytics | null>(null);
-  const [courseAnalytics, setCourseAnalytics] = useState<CourseAnalytics | null>(null);
+  const [courseStats, setCourseStats] = useState<SimpleCourseStats | null>(null);
+  const [overallStats, setOverallStats] = useState<OverallStats | null>(null);
   const [loading, setLoading] = useState(false);
-  const [timeRange, setTimeRange] = useState<string>('30'); // days
 
   useEffect(() => {
-    loadCourses();
-    loadOverallAnalytics();
-  }, [user.id, timeRange]);
+    loadData();
+  }, [user.id]);
 
   useEffect(() => {
     if (selectedCourse) {
-      loadCourseAnalytics();
+      loadCourseStats();
     }
-  }, [selectedCourse, timeRange]);
+  }, [selectedCourse]);
 
-  const loadCourses = async () => {
+  const loadData = async () => {
     try {
+      setLoading(true);
+      
+      // Load courses
       const response = await CourseService.getCoursesByInstructor(user.id, 1, 100);
       setCourses(response.data);
+      
       if (response.data.length > 0 && !selectedCourse) {
         setSelectedCourse(response.data[0].id);
       }
-    } catch (error) {
-      console.error('Error loading courses:', error);
-    }
-  };
 
-  const loadOverallAnalytics = async () => {
-    try {
-      setLoading(true);
-      // This would be a real API call to get lecturer analytics
-      // For now, we'll simulate the data
-      const mockOverallAnalytics: OverallAnalytics = {
-        totalCourses: courses.length,
-        totalStudents: courses.reduce((sum, course) => sum + course.maxStudents, 0),
-        totalSessions: 45,
-        overallAttendanceRate: 87.5,
-        activeCourses: courses.length,
-        thisWeekSessions: 8,
-        thisWeekAttendance: 92.3,
-        monthlyTrend: 'up'
-      };
-      setOverallAnalytics(mockOverallAnalytics);
+      // Calculate overall stats
+      const totalCourses = response.data.length;
+      const totalStudentsAcrossAllCourses = response.data.reduce((sum, course) => sum + (course.maxStudents || 0), 0);
+      
+      // Get sessions for this week across all courses
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      let totalSessionsThisWeek = 0;
+      let totalAttendanceSum = 0;
+      let courseCount = 0;
+
+      for (const course of response.data) {
+        const sessions = await AttendanceService.getCourseClassSessions(course.id, 50);
+        const thisWeekSessions = sessions.filter(session => 
+          new Date(session.session_date) >= oneWeekAgo
+        );
+        totalSessionsThisWeek += thisWeekSessions.length;
+
+        // Get attendance rate for this course
+        const analytics = await AttendanceService.getCourseAttendanceAnalytics(course.id, 30);
+        if (analytics.length > 0) {
+          const avgRate = analytics.reduce((sum, a) => sum + a.attendanceRate, 0) / analytics.length;
+          totalAttendanceSum += avgRate;
+          courseCount++;
+        }
+      }
+
+      const averageAttendanceAcrossAllCourses = courseCount > 0 ? totalAttendanceSum / courseCount : 0;
+
+      setOverallStats({
+        totalCourses,
+        totalStudentsAcrossAllCourses,
+        totalSessionsThisWeek,
+        averageAttendanceAcrossAllCourses
+      });
+
     } catch (error) {
-      console.error('Error loading overall analytics:', error);
+      console.error('Error loading analytics data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadCourseAnalytics = async () => {
+  const loadCourseStats = async () => {
     if (!selectedCourse) return;
     
     try {
       setLoading(true);
-      const course = courses.find(c => c.id === selectedCourse);
-      if (!course) return;
+      
+      // Get real course statistics
+      const stats = await AttendanceService.getCourseStatistics(selectedCourse);
+      setCourseStats(stats);
 
-      // This would be a real API call to get course-specific analytics
-      // For now, we'll simulate the data
-      const mockCourseAnalytics: CourseAnalytics = {
-        courseId: selectedCourse,
-        courseName: course.name,
-        courseCode: course.code,
-        totalStudents: course.maxStudents,
-        totalSessions: 12,
-        averageAttendance: 85.7,
-        attendanceTrend: 'up',
-        lastSessionDate: new Date().toISOString(),
-        topPerformers: [
-          { studentId: '1', studentName: 'Alice Johnson', attendanceRate: 98.5 },
-          { studentId: '2', studentName: 'Bob Smith', attendanceRate: 96.2 },
-          { studentId: '3', studentName: 'Carol Davis', attendanceRate: 94.8 }
-        ],
-        lowPerformers: [
-          { studentId: '4', studentName: 'David Wilson', attendanceRate: 65.3 },
-          { studentId: '5', studentName: 'Eva Brown', attendanceRate: 72.1 },
-          { studentId: '6', studentName: 'Frank Miller', attendanceRate: 78.9 }
-        ],
-        weeklyData: [
-          { week: 'Week 1', attendanceRate: 82.1, sessionsCount: 3 },
-          { week: 'Week 2', attendanceRate: 84.5, sessionsCount: 3 },
-          { week: 'Week 3', attendanceRate: 87.2, sessionsCount: 3 },
-          { week: 'Week 4', attendanceRate: 89.1, sessionsCount: 3 }
-        ]
-      };
-      setCourseAnalytics(mockCourseAnalytics);
     } catch (error) {
-      console.error('Error loading course analytics:', error);
+      console.error('Error loading course stats:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatPercentage = (value: number) => `${value.toFixed(1)}%`;
-
-  const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
-    switch (trend) {
-      case 'up':
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case 'down':
-        return <TrendingDown className="h-4 w-4 text-red-600" />;
-      default:
-        return <Activity className="h-4 w-4 text-gray-600" />;
-    }
-  };
+  const formatPercentage = (value: number) => `${Math.round(value)}%`;
 
   const getAttendanceColor = (rate: number) => {
     if (rate >= 90) return 'text-green-600';
@@ -180,380 +134,187 @@ const LecturerAnalytics: React.FC<LecturerAnalyticsProps> = ({ user }) => {
     return 'text-red-600';
   };
 
+  if (loading && !overallStats && !courseStats) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Analytics Dashboard</h2>
-          <p className="text-muted-foreground">
-            View insights about your courses and student attendance
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Time range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 3 months</SelectItem>
-              <SelectItem value="365">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold text-white">Analytics Dashboard</h2>
+        <p className="text-gray-400">Overview of your courses and attendance</p>
       </div>
 
-      {/* Overall Analytics Cards */}
-      {overallAnalytics && (
+      {/* Overall Stats */}
+      {overallStats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+          <Card className="bg-gray-800 border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-gray-300">My Courses</CardTitle>
+              <BookOpen className="h-4 w-4 text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{overallAnalytics.totalCourses}</div>
-              <p className="text-xs text-muted-foreground">
-                {overallAnalytics.activeCourses} active
-              </p>
+              <div className="text-2xl font-bold text-white">{overallStats.totalCourses}</div>
+              <p className="text-xs text-gray-400">Total assigned</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gray-800 border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-gray-300">Total Students</CardTitle>
+              <Users className="h-4 w-4 text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{overallAnalytics.totalStudents}</div>
-              <p className="text-xs text-muted-foreground">
-                Across all courses
-              </p>
+              <div className="text-2xl font-bold text-white">{overallStats.totalStudentsAcrossAllCourses}</div>
+              <p className="text-xs text-gray-400">Across all courses</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-gray-800 border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overall Attendance</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-gray-300">This Week</CardTitle>
+              <Calendar className="h-4 w-4 text-gray-400" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${getAttendanceColor(overallAnalytics.overallAttendanceRate)}`}>
-                {formatPercentage(overallAnalytics.overallAttendanceRate)}
+              <div className="text-2xl font-bold text-white">{overallStats.totalSessionsThisWeek}</div>
+              <p className="text-xs text-gray-400">Sessions conducted</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-300">Avg Attendance</CardTitle>
+              <TrendingUp className="h-4 w-4 text-gray-400" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${getAttendanceColor(overallStats.averageAttendanceAcrossAllCourses)}`}>
+                {formatPercentage(overallStats.averageAttendanceAcrossAllCourses)}
               </div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                {getTrendIcon(overallAnalytics.monthlyTrend)}
-                <span className="ml-1">vs last month</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Week</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{overallAnalytics.thisWeekSessions}</div>
-              <p className="text-xs text-muted-foreground">
-                Sessions conducted
-              </p>
+              <p className="text-xs text-gray-400">All courses</p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Course-Specific Analytics */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <div className="flex justify-between items-center">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance Details</TabsTrigger>
-            <TabsTrigger value="students">Student Performance</TabsTrigger>
-          </TabsList>
-          
+      {/* Course Selection */}
+      {courses.length > 0 && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white">Course Details</h3>
           <Select value={selectedCourse} onValueChange={setSelectedCourse}>
-            <SelectTrigger className="w-[250px]">
+            <SelectTrigger className="w-[300px] bg-gray-800 border-gray-700 text-white">
               <SelectValue placeholder="Select a course" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-gray-800 border-gray-700">
               {courses.map(course => (
-                <SelectItem key={course.id} value={course.id}>
+                <SelectItem key={course.id} value={course.id} className="text-white hover:bg-gray-700">
                   {course.code} - {course.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+      )}
 
-        <TabsContent value="overview" className="space-y-4">
-          {courseAnalytics ? (
-            <>
-              {/* Course Overview Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Students Enrolled</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{courseAnalytics.totalStudents}</div>
-                    <p className="text-xs text-muted-foreground">
-                      In {courseAnalytics.courseCode}
-                    </p>
-                  </CardContent>
-                </Card>
+      {/* Course-Specific Stats */}
+      {courseStats && selectedCourse && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-300">Enrolled Students</CardTitle>
+              <Users className="h-4 w-4 text-gray-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{courseStats.totalStudents}</div>
+              <p className="text-xs text-gray-400">In this course</p>
+            </CardContent>
+          </Card>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{courseAnalytics.totalSessions}</div>
-                    <p className="text-xs text-muted-foreground">
-                      Sessions conducted
-                    </p>
-                  </CardContent>
-                </Card>
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-300">Total Sessions</CardTitle>
+              <Calendar className="h-4 w-4 text-gray-400" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{courseStats.totalSessions}</div>
+              <p className="text-xs text-gray-400">Sessions held</p>
+            </CardContent>
+          </Card>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Average Attendance</CardTitle>
-                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className={`text-2xl font-bold ${getAttendanceColor(courseAnalytics.averageAttendance)}`}>
-                      {formatPercentage(courseAnalytics.averageAttendance)}
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      {getTrendIcon(courseAnalytics.attendanceTrend)}
-                      <span className="ml-1">Trending {courseAnalytics.attendanceTrend}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Last Session</CardTitle>
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {new Date(courseAnalytics.lastSessionDate).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric' 
-                      })}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Latest class
-                    </p>
-                  </CardContent>
-                </Card>
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-300">Attendance Rate</CardTitle>
+              <BarChart3 className="h-4 w-4 text-gray-400" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${getAttendanceColor(courseStats.averageAttendance)}`}>
+                {formatPercentage(courseStats.averageAttendance)}
               </div>
+              <p className="text-xs text-gray-400">Average attendance</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-              {/* Weekly Trend */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Attendance Trend</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {courseAnalytics.weeklyData.map((week, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-3 h-3 bg-primary rounded-full"></div>
-                          <span className="font-medium">{week.week}</span>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <span className="text-sm text-muted-foreground">
-                            {week.sessionsCount} sessions
-                          </span>
-                          <span className={`font-semibold ${getAttendanceColor(week.attendanceRate)}`}>
-                            {formatPercentage(week.attendanceRate)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+      {/* Recent Sessions */}
+      {courseStats && courseStats.recentAttendanceTrend.length > 0 && (
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">Recent Sessions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {courseStats.recentAttendanceTrend.slice(0, 5).map((session, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span className="text-white font-medium">
+                      {new Date(session.date).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <Card>
-              <CardContent className="text-center py-8">
-                <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No analytics available</h3>
-                <p className="text-muted-foreground">
-                  {courses.length === 0 
-                    ? "You don't have any courses yet."
-                    : "Select a course to view detailed analytics."}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="attendance" className="space-y-4">
-          {courseAnalytics ? (
-            <div className="grid gap-6">
-              {/* Attendance Summary */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Attendance Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center">
-                      <div className={`text-3xl font-bold ${getAttendanceColor(courseAnalytics.averageAttendance)}`}>
-                        {formatPercentage(courseAnalytics.averageAttendance)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">Average Attendance</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-green-600">
-                        {Math.round(courseAnalytics.totalStudents * courseAnalytics.averageAttendance / 100)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">Students Present (avg)</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-red-600">
-                        {courseAnalytics.totalStudents - Math.round(courseAnalytics.totalStudents * courseAnalytics.averageAttendance / 100)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">Students Absent (avg)</p>
-                    </div>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm text-gray-400">
+                      {session.present}/{session.total} students
+                    </span>
+                    <Badge 
+                      variant={session.rate >= 90 ? 'default' : session.rate >= 75 ? 'secondary' : 'destructive'}
+                      className={
+                        session.rate >= 90 ? 'bg-green-600 text-white' :
+                        session.rate >= 75 ? 'bg-yellow-600 text-white' :
+                        'bg-red-600 text-white'
+                      }
+                    >
+                      {formatPercentage(session.rate)}
+                    </Badge>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Attendance Alerts */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                    <span>Attendance Alerts</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded">
-                      <div>
-                        <p className="font-medium text-yellow-800">Low Attendance Warning</p>
-                        <p className="text-sm text-yellow-600">
-                          3 students have attendance below 75%
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                        Action Required
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded">
-                      <div>
-                        <p className="font-medium text-blue-800">Attendance Improvement</p>
-                        <p className="text-sm text-blue-600">
-                          Overall attendance increased by 5% this month
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="text-blue-600 border-blue-300">
-                        Good Progress
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              ))}
             </div>
-          ) : (
-            <Card>
-              <CardContent className="text-center py-8">
-                <Calendar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No attendance data</h3>
-                <p className="text-muted-foreground">
-                  Select a course to view attendance analytics.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="students" className="space-y-4">
-          {courseAnalytics ? (
-            <div className="grid gap-6">
-              {/* Top Performers */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Award className="h-5 w-5 text-green-600" />
-                    <span>Top Performers</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {courseAnalytics.topPerformers.map((student, index) => (
-                      <div key={student.studentId} className="flex items-center justify-between p-3 border rounded">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-semibold">
-                            {index + 1}
-                          </div>
-                          <span className="font-medium">{student.studentName}</span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-semibold text-green-600">
-                            {formatPercentage(student.attendanceRate)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Students Needing Attention */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                    <span>Students Needing Attention</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {courseAnalytics.lowPerformers.map((student, index) => (
-                      <div key={student.studentId} className="flex items-center justify-between p-3 border rounded">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center">
-                            <AlertTriangle className="h-4 w-4" />
-                          </div>
-                          <span className="font-medium">{student.studentName}</span>
-                        </div>
-                        <div className="text-right">
-                          <div className={`text-lg font-semibold ${getAttendanceColor(student.attendanceRate)}`}>
-                            {formatPercentage(student.attendanceRate)}
-                          </div>
-                          <Button variant="outline" size="sm" className="mt-1">
-                            Contact Student
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="text-center py-8">
-                <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No student data</h3>
-                <p className="text-muted-foreground">
-                  Select a course to view student performance analytics.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+      {/* Empty State */}
+      {courses.length === 0 && (
+        <Card className="bg-gray-800 border-gray-700">
+          <CardContent className="text-center py-8">
+            <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold mb-2 text-white">No courses assigned</h3>
+            <p className="text-gray-400">You don't have any courses assigned yet.</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

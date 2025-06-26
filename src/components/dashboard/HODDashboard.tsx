@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Users, 
   Wifi, 
@@ -15,7 +16,8 @@ import {
   RefreshCw,
   GraduationCap,
   UserCheck,
-  Settings
+  Settings,
+  LogOut
 } from 'lucide-react';
 
 // Import HOD-specific components
@@ -36,6 +38,7 @@ const HODDashboard: React.FC<HODDashboardProps> = ({
   schoolStats,
   onRefresh
 }) => {
+  const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'courses' | 'beacons' | 'approvals' | 'analytics'>('overview');
   const [school, setSchool] = useState<School | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
@@ -74,24 +77,45 @@ const HODDashboard: React.FC<HODDashboardProps> = ({
     loadSchoolData();
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   const renderOverview = () => (
     <div className="space-y-6">
       {/* Welcome Section with School Info */}
       <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-6 rounded-lg">
-        <h1 className="text-2xl font-bold mb-2">
-          Welcome back, {user.firstName}!
-        </h1>
-        <p className="text-green-100">
-          {user.role === 'head_lecturer' ? 'Head of Department' : 'School Administrator'} - {school?.name || 'Loading...'}
-        </p>
-        {school && (
-          <div className="mt-3 flex items-center space-x-4 text-sm">
-            <span>School Code: {school.code}</span>
-            <Badge variant="secondary" className="bg-white/20 text-white">
-              {school.status}
-            </Badge>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold mb-2">
+              Welcome back, {user.firstName}!
+            </h1>
+            <p className="text-green-100">
+              {user.role === 'head_lecturer' ? 'Head of Department' : 'School Administrator'} - {school?.name || 'Loading...'}
+            </p>
+            {school && (
+              <div className="mt-3 flex items-center space-x-4 text-sm">
+                <span>School Code: {school.code}</span>
+                <Badge variant="secondary" className="bg-white/20 text-white">
+                  {school.status}
+                </Badge>
+              </div>
+            )}
           </div>
-        )}
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            size="sm"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </Button>
+        </div>
       </div>
 
       {/* School Statistics Cards */}

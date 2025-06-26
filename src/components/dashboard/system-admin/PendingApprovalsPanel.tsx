@@ -17,7 +17,8 @@ import {
   School as SchoolIcon,
   Users,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  AlertCircle
 } from 'lucide-react';
 
 interface PendingApprovalsPanelProps {
@@ -33,6 +34,9 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [processingUsers, setProcessingUsers] = useState<string[]>([]);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadPendingApprovals();
@@ -54,25 +58,37 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
 
   const handleApproveUser = async (userId: string, notes?: string) => {
     try {
+      setProcessingUsers(prev => [...prev, userId]);
+      setError(null);
+      setSuccessMessage(null);
+      
       const approval: ApprovalRequest = {
         status: 'approved',
-        reviewNotes: notes
+        reviewNotes: notes || 'Approved by system administrator'
       };
       
       const response = await UserService.approveUser(userId, approval, user.id);
       if (response.error) {
         setError(response.error);
       } else {
-        loadPendingApprovals();
+        setSuccessMessage('User approved successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
+        await loadPendingApprovals();
         onUpdate();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to approve user');
+    } finally {
+      setProcessingUsers(prev => prev.filter(id => id !== userId));
     }
   };
 
   const handleRejectUser = async (userId: string, notes?: string) => {
     try {
+      setProcessingUsers(prev => [...prev, userId]);
+      setError(null);
+      setSuccessMessage(null);
+      
       const approval: ApprovalRequest = {
         status: 'rejected',
         reviewNotes: notes || 'Registration rejected by system administrator'
@@ -82,11 +98,15 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
       if (response.error) {
         setError(response.error);
       } else {
-        loadPendingApprovals();
+        setSuccessMessage('User rejected successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
+        await loadPendingApprovals();
         onUpdate();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reject user');
+    } finally {
+      setProcessingUsers(prev => prev.filter(id => id !== userId));
     }
   };
 
@@ -94,6 +114,10 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
     if (selectedUsers.length === 0) return;
 
     try {
+      setBulkProcessing(true);
+      setError(null);
+      setSuccessMessage(null);
+      
       const approval: ApprovalRequest = {
         status,
         reviewNotes: reviewNotes || (status === 'approved' ? 'Bulk approved by system administrator' : 'Bulk rejected by system administrator')
@@ -103,13 +127,18 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
       if (response.error) {
         setError(response.error);
       } else {
+        const statusText = status === 'approved' ? 'approved' : 'rejected';
+        setSuccessMessage(`${selectedUsers.length} users ${statusText} successfully`);
+        setTimeout(() => setSuccessMessage(null), 3000);
         setSelectedUsers([]);
         setReviewNotes('');
-        loadPendingApprovals();
+        await loadPendingApprovals();
         onUpdate();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to process bulk approval');
+    } finally {
+      setBulkProcessing(false);
     }
   };
 
@@ -131,24 +160,44 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'student': return 'bg-blue-100 text-blue-800';
-      case 'lecturer': return 'bg-green-100 text-green-800';
-      case 'admin': return 'bg-purple-100 text-purple-800';
-      case 'head_lecturer': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'student': return 'bg-blue-900/30 text-blue-300 border-blue-400';
+      case 'lecturer': return 'bg-green-900/30 text-green-300 border-green-400';
+      case 'admin': return 'bg-purple-900/30 text-purple-300 border-purple-400';
+      case 'head_lecturer': return 'bg-orange-900/30 text-orange-300 border-orange-400';
+      default: return 'bg-gray-700 text-gray-300 border-gray-600';
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* Error Display */}
+      {error && (
+        <Alert variant="destructive" className="bg-red-900/20 border-red-500/50">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Success Display */}
+      {successMessage && (
+        <Alert className="bg-green-900/20 border-green-500/50">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription className="text-green-300">
+            {successMessage}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Pending User Approvals</h2>
-          <p className="text-muted-foreground">Review and approve user registrations</p>
+          <h2 className="text-2xl font-bold text-white">Pending User Approvals</h2>
+          <p className="text-gray-400">Review and approve user registrations</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge variant="outline">
+          <Badge variant="outline" className="border-gray-600 text-gray-300 bg-gray-800">
             {pendingUsers.length} pending
           </Badge>
         </div>
@@ -156,14 +205,14 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
 
       {/* Bulk Actions */}
       {selectedUsers.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-orange-500/30 bg-orange-900/20">
           <CardContent className="pt-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="font-medium">
+                <span className="font-medium text-white">
                   {selectedUsers.length} user(s) selected
                 </span>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedUsers([])}>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedUsers([])} className="text-gray-300 hover:bg-gray-700">
                   Clear selection
                 </Button>
               </div>
@@ -182,17 +231,27 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
               <div className="flex space-x-2">
                 <Button
                   onClick={() => handleBulkApprove('approved')}
-                  className="bg-green-600 hover:bg-green-700"
+                  disabled={bulkProcessing}
+                  className="bg-green-600 hover:bg-green-700 text-white"
                 >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Approve Selected
+                  {bulkProcessing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                  )}
+                  {bulkProcessing ? 'Processing...' : 'Approve Selected'}
                 </Button>
                 <Button
                   onClick={() => handleBulkApprove('rejected')}
+                  disabled={bulkProcessing}
                   variant="destructive"
                 >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Reject Selected
+                  {bulkProcessing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <XCircle className="mr-2 h-4 w-4" />
+                  )}
+                  {bulkProcessing ? 'Processing...' : 'Reject Selected'}
                 </Button>
               </div>
             </div>
@@ -202,40 +261,42 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
 
       {/* Pending Users List */}
       {loading ? (
-        <div className="flex items-center justify-center py-8">
+        <div className="flex items-center justify-center py-8 text-gray-300">
           <Loader2 className="h-6 w-6 animate-spin" />
           <span className="ml-2">Loading pending approvals...</span>
         </div>
       ) : pendingUsers.length === 0 ? (
-        <Card>
+        <Card className="bg-gray-800 border-gray-700">
           <CardContent className="py-8">
             <div className="text-center">
-              <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-              <h3 className="mt-4 text-lg font-medium">No pending approvals</h3>
-              <p className="text-muted-foreground">All user registrations have been reviewed.</p>
+              <CheckCircle className="mx-auto h-12 w-12 text-green-400" />
+              <h3 className="mt-4 text-lg font-medium text-white">No pending approvals</h3>
+              <p className="text-gray-400">All user registrations have been reviewed.</p>
             </div>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
           {/* Select All */}
-          <div className="flex items-center space-x-2 p-3 border rounded-lg bg-gray-50">
+          <div className="flex items-center space-x-2 p-3 border border-gray-600 rounded-lg bg-gray-800">
             <Checkbox
               checked={selectedUsers.length === pendingUsers.length && pendingUsers.length > 0}
+              disabled={bulkProcessing}
               onCheckedChange={selectAllUsers}
             />
-            <Label className="font-medium">
+            <Label className="font-medium text-white">
               Select all ({pendingUsers.length} users)
             </Label>
           </div>
 
           {/* Users List */}
           {pendingUsers.map((pendingUser) => (
-            <Card key={pendingUser.id} className="hover:shadow-md transition-shadow">
+            <Card key={pendingUser.id} className="hover:shadow-lg transition-shadow bg-gray-800 border-gray-700">
               <CardContent className="p-6">
                 <div className="flex items-start space-x-4">
                   <Checkbox
                     checked={selectedUsers.includes(pendingUser.id)}
+                    disabled={processingUsers.includes(pendingUser.id) || bulkProcessing}
                     onCheckedChange={() => toggleUserSelection(pendingUser.id)}
                   />
                   
@@ -243,10 +304,10 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
                     {/* User Info */}
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-medium text-lg">
+                        <h3 className="font-medium text-lg text-white">
                           {pendingUser.firstName} {pendingUser.lastName}
                         </h3>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                        <div className="flex items-center space-x-4 text-sm text-gray-400">
                           <div className="flex items-center space-x-1">
                             <Mail className="h-4 w-4" />
                             <span>{pendingUser.email}</span>
@@ -257,10 +318,10 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Badge className={getRoleColor(pendingUser.role)}>
+                        <Badge variant="outline" className={getRoleColor(pendingUser.role)}>
                           {pendingUser.role.replace('_', ' ')}
                         </Badge>
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="border-yellow-500/50 bg-yellow-900/20 text-yellow-300">
                           <Clock className="mr-1 h-3 w-3" />
                           Pending
                         </Badge>
@@ -268,30 +329,30 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
                     </div>
 
                     {/* Additional Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-300">
                       {pendingUser.studentId && (
                         <div>
-                          <span className="font-medium">Student ID:</span> {pendingUser.studentId}
+                          <span className="font-medium text-white">Student ID:</span> {pendingUser.studentId}
                         </div>
                       )}
                       {pendingUser.employeeId && (
                         <div>
-                          <span className="font-medium">Employee ID:</span> {pendingUser.employeeId}
+                          <span className="font-medium text-white">Employee ID:</span> {pendingUser.employeeId}
                         </div>
                       )}
                       {pendingUser.department && (
                         <div>
-                          <span className="font-medium">Department:</span> {pendingUser.department}
+                          <span className="font-medium text-white">Department:</span> {pendingUser.department}
                         </div>
                       )}
                       {pendingUser.school && (
                         <div className="flex items-center space-x-1">
-                          <SchoolIcon className="h-4 w-4" />
+                          <SchoolIcon className="h-4 w-4 text-gray-400" />
                           <span>{pendingUser.school.name}</span>
                         </div>
                       )}
                       <div>
-                        <span className="font-medium">Registered:</span> {new Date(pendingUser.createdAt).toLocaleDateString()}
+                        <span className="font-medium text-white">Registered:</span> {new Date(pendingUser.createdAt).toLocaleDateString()}
                       </div>
                     </div>
 
@@ -300,19 +361,29 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
                       <Button
                         size="sm"
                         onClick={() => handleRejectUser(pendingUser.id)}
+                        disabled={processingUsers.includes(pendingUser.id) || bulkProcessing}
                         variant="outline"
-                        className="text-red-600 hover:text-red-700"
+                        className="border-red-500/50 text-red-400 hover:bg-red-900/20 hover:text-red-300 bg-red-900/10 disabled:opacity-50"
                       >
-                        <XCircle className="mr-1 h-4 w-4" />
-                        Reject
+                        {processingUsers.includes(pendingUser.id) ? (
+                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        ) : (
+                          <XCircle className="mr-1 h-4 w-4" />
+                        )}
+                        {processingUsers.includes(pendingUser.id) ? 'Processing...' : 'Reject'}
                       </Button>
                       <Button
                         size="sm"
                         onClick={() => handleApproveUser(pendingUser.id)}
-                        className="bg-green-600 hover:bg-green-700"
+                        disabled={processingUsers.includes(pendingUser.id) || bulkProcessing}
+                        className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
                       >
-                        <CheckCircle className="mr-1 h-4 w-4" />
-                        Approve
+                        {processingUsers.includes(pendingUser.id) ? (
+                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle className="mr-1 h-4 w-4" />
+                        )}
+                        {processingUsers.includes(pendingUser.id) ? 'Processing...' : 'Approve'}
                       </Button>
                     </div>
                   </div>
@@ -330,16 +401,18 @@ const PendingApprovalsPanel: React.FC<PendingApprovalsPanelProps> = ({ user, onU
             variant="outline"
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
+            className="border-gray-600 text-gray-300 hover:bg-gray-700"
           >
             Previous
           </Button>
-          <span className="flex items-center px-3">
+          <span className="flex items-center px-3 text-gray-300">
             Page {currentPage} of {totalPages}
           </span>
           <Button
             variant="outline"
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
+            className="border-gray-600 text-gray-300 hover:bg-gray-700"
           >
             Next
           </Button>

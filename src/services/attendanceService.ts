@@ -229,6 +229,8 @@ export class AttendanceService {
   static async getTodayActiveSessions(instructorId: string): Promise<EnhancedClassSession[]> {
     try {
       const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const currentTime = now.toTimeString().split(' ')[0]; // HH:MM:SS
       
       const { data, error } = await supabase
         .from('class_sessions')
@@ -249,13 +251,13 @@ export class AttendanceService {
           )
         `)
         .eq('instructor_id', instructorId)
-        .gte('session_date', today)
-        .lte('session_date', today)
-        .eq('qr_code_active', true);
+        .eq('session_date', today)
+        .gte('end_time', currentTime); // Session hasn't ended yet
 
       if (error) throw error;
       
-      return data || [];
+      const activeSessions = data?.map(session => this.mapToEnhancedClassSession(session)) || [];
+      return activeSessions;
     } catch (error) {
       console.error('Error fetching today\'s active sessions:', error);
       return [];
@@ -1050,14 +1052,18 @@ export class AttendanceService {
       const attendanceWindowStart = new Date(sessionData.startTime);
       const attendanceWindowEnd = new Date(attendanceWindowStart.getTime() + sessionData.attendanceWindowMinutes * 60000);
       
+      // Extract time part from ISO timestamp for TIME fields
+      const startTimeOnly = new Date(sessionData.startTime).toTimeString().split(' ')[0]; // HH:MM:SS
+      const endTimeOnly = new Date(sessionData.endTime).toTimeString().split(' ')[0]; // HH:MM:SS
+      
       const { data, error } = await supabase
         .from('class_sessions')
         .insert({
           course_id: sessionData.courseId,
           instructor_id: sessionData.instructorId,
           session_date: new Date(sessionData.startTime).toISOString().split('T')[0],
-          start_time: sessionData.startTime,
-          end_time: sessionData.endTime,
+          start_time: startTimeOnly,
+          end_time: endTimeOnly,
           location: sessionData.location,
           qr_code_active: sessionData.qrCodeActive,
           qr_code_expires_at: sessionData.qrCodeActive ? attendanceWindowEnd.toISOString() : null,
@@ -1094,11 +1100,14 @@ export class AttendanceService {
    */
   static async endClassSession(sessionId: string): Promise<ApiResponse<boolean>> {
     try {
+      // Extract time part for TIME field
+      const endTimeOnly = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
+      
       const { error } = await supabase
         .from('class_sessions')
         .update({
           qr_code_active: false,
-          end_time: new Date().toISOString()
+          end_time: endTimeOnly
         })
         .eq('id', sessionId);
 

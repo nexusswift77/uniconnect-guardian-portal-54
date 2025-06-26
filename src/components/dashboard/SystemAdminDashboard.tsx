@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Plus, 
   School as SchoolIcon, 
@@ -14,7 +15,8 @@ import {
   CheckCircle, 
   Clock,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  LogOut
 } from 'lucide-react';
 
 // Import sub-components
@@ -34,6 +36,7 @@ const SystemAdminDashboard: React.FC<SystemAdminDashboardProps> = ({
   dashboardStats,
   onRefresh
 }) => {
+  const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'schools' | 'users' | 'approvals' | 'analytics'>('overview');
   const [recentSchools, setRecentSchools] = useState<School[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState(0);
@@ -68,16 +71,37 @@ const SystemAdminDashboard: React.FC<SystemAdminDashboardProps> = ({
     loadRecentData();
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   const renderOverview = () => (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-lg">
-        <h1 className="text-2xl font-bold mb-2">
-          Welcome back, {user.firstName}!
-        </h1>
-        <p className="text-blue-100">
-          System Administrator Dashboard - Manage all schools and system-wide settings
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">
+              Welcome back, {user.firstName}!
+            </h1>
+            <p className="text-blue-100">
+              System Administrator Dashboard - Manage all schools and system-wide settings
+            </p>
+          </div>
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            size="sm"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}

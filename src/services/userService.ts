@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, supabaseAdmin } from '@/lib/supabaseClient';
 import { 
   EnhancedUser, 
   ApiResponse, 
@@ -160,6 +160,57 @@ export class UserService {
   }
 
   /**
+   * Get users by school ID for HOD management (restricted to students and lecturers only)
+   */
+  static async getUsersBySchoolForHOD(
+    schoolId: string,
+    page: number = 1,
+    pageSize: number = 20,
+    role?: string
+  ): Promise<PaginatedResponse<EnhancedUser>> {
+    try {
+      let query = supabase
+        .from('users')
+        .select(`
+          *,
+          school:schools(*)
+        `, { count: 'exact' })
+        .eq('school_id', schoolId)
+        .in('role', ['student', 'lecturer']); // HODs can only manage students and lecturers
+
+      if (role && ['student', 'lecturer'].includes(role)) {
+        query = query.eq('role', role);
+      }
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      query = query
+        .range(from, to)
+        .order('created_at', { ascending: false });
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const users = data?.map(this.transformUserFromDB) || [];
+      const totalPages = Math.ceil((count || 0) / pageSize);
+
+      return {
+        data: users,
+        count: count || 0,
+        page,
+        pageSize,
+        totalPages
+      };
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to fetch school users for HOD');
+    }
+  }
+
+  /**
    * Get pending user approvals
    */
   static async getPendingApprovals(
@@ -209,6 +260,53 @@ export class UserService {
   }
 
   /**
+   * Get pending user approvals for HOD (restricted to students and lecturers only)
+   */
+  static async getPendingApprovalsForHOD(
+    schoolId: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<PaginatedResponse<EnhancedUser>> {
+    try {
+      let query = supabase
+        .from('users')
+        .select(`
+          *,
+          school:schools(*)
+        `, { count: 'exact' })
+        .eq('approval_status', 'pending')
+        .eq('school_id', schoolId)
+        .in('role', ['student', 'lecturer']); // HODs can only approve students and lecturers
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      
+      query = query
+        .range(from, to)
+        .order('created_at', { ascending: true });
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const users = data?.map(this.transformUserFromDB) || [];
+      const totalPages = Math.ceil((count || 0) / pageSize);
+
+      return {
+        data: users,
+        count: count || 0,
+        page,
+        pageSize,
+        totalPages
+      };
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to fetch pending approvals for HOD');
+    }
+  }
+
+  /**
    * Approve or reject user registration
    */
   static async approveUser(
@@ -217,7 +315,45 @@ export class UserService {
     approverId: string
   ): Promise<ApiResponse<EnhancedUser>> {
     try {
-      const { data, error } = await supabase
+      // First, get the approver's role to check permissions
+      const { data: approver } = await supabase
+        .from('users')
+        .select('role, school_id')
+        .eq('id', approverId)
+        .single();
+
+      // Get the user being approved to check their role
+      const { data: userToApprove } = await supabase
+        .from('users')
+        .select('role, school_id')
+        .eq('id', userId)
+        .single();
+
+      if (!approver || !userToApprove) {
+        return { 
+          data: null as any, 
+          error: 'User or approver not found'
+        };
+      }
+
+      // If approver is HOD, restrict what they can approve
+      if (approver.role === 'head_lecturer') {
+        if (!['student', 'lecturer'].includes(userToApprove.role)) {
+          return { 
+            data: null as any, 
+            error: 'Heads of Department can only approve students and lecturers'
+          };
+        }
+        if (approver.school_id !== userToApprove.school_id) {
+          return { 
+            data: null as any, 
+            error: 'You can only approve users from your own school'
+          };
+        }
+      }
+
+      // Use admin client for the update to bypass RLS
+      const { error: updateError } = await supabaseAdmin
         .from('users')
         .update({
           approval_status: approval.status,
@@ -225,20 +361,29 @@ export class UserService {
           approved_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
-        .eq('id', userId)
+        .eq('id', userId);
+
+      if (updateError) {
+        return { data: null as any, error: updateError.message };
+      }
+
+      // Get the updated user data with school information
+      const { data: userData, error: fetchError } = await supabaseAdmin
+        .from('users')
         .select(`
           *,
           school:schools(*)
         `)
+        .eq('id', userId)
         .single();
 
-      if (error) {
-        return { data: null as any, error: error.message };
+      if (fetchError || !userData) {
+        return { data: null as any, error: 'User updated but could not fetch updated data' };
       }
 
       // If approved, create notification
       if (approval.status === 'approved') {
-        await supabase
+        await supabaseAdmin
           .from('notifications')
           .insert({
             user_id: userId,
@@ -249,7 +394,7 @@ export class UserService {
           });
       } else {
         // If rejected, create notification with reason
-        await supabase
+        await supabaseAdmin
           .from('notifications')
           .insert({
             user_id: userId,
@@ -261,7 +406,7 @@ export class UserService {
       }
 
       return { 
-        data: this.transformUserFromDB(data),
+        data: this.transformUserFromDB(userData),
         message: `User ${approval.status} successfully`
       };
     } catch (error) {
@@ -302,15 +447,18 @@ export class UserService {
         .select(`
           *,
           school:schools(*)
-        `)
-        .single();
+        `);
 
       if (error) {
         return { data: null as any, error: error.message };
       }
 
+      if (!data || data.length === 0) {
+        return { data: null as any, error: 'User not found or could not be updated' };
+      }
+
       return { 
-        data: this.transformUserFromDB(data),
+        data: this.transformUserFromDB(data[0]),
         message: 'User updated successfully'
       };
     } catch (error) {
@@ -395,6 +543,37 @@ export class UserService {
   }
 
   /**
+   * Get user statistics by role for HOD (restricted to students and lecturers only)
+   */
+  static async getUserStatsByRoleForHOD(schoolId: string): Promise<ApiResponse<Record<string, number>>> {
+    try {
+      let query = supabase
+        .from('users')
+        .select('role')
+        .eq('school_id', schoolId)
+        .in('role', ['student', 'lecturer']); // HODs can only see stats for students and lecturers
+
+      const { data, error } = await query;
+
+      if (error) {
+        return { data: null as any, error: error.message };
+      }
+
+      const stats: Record<string, number> = {};
+      data?.forEach(user => {
+        stats[user.role] = (stats[user.role] || 0) + 1;
+      });
+
+      return { data: stats };
+    } catch (error) {
+      return { 
+        data: null as any, 
+        error: error instanceof Error ? error.message : 'Failed to fetch user statistics for HOD'
+      };
+    }
+  }
+
+  /**
    * Bulk approve users
    */
   static async bulkApproveUsers(
@@ -403,7 +582,7 @@ export class UserService {
     approverId: string
   ): Promise<ApiResponse<number>> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('users')
         .update({
           approval_status: approval.status,
@@ -429,7 +608,7 @@ export class UserService {
         timestamp: new Date().toISOString()
       }));
 
-      await supabase
+      await supabaseAdmin
         .from('notifications')
         .insert(notifications);
 

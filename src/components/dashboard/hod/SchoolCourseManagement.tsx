@@ -56,8 +56,8 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
   const [beacons, setBeacons] = useState<BLEBeacon[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
-  const [selectedSemester, setSelectedSemester] = useState<string>('');
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+  const [selectedSemester, setSelectedSemester] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingCourse, setEditingCourse] = useState<EnhancedCourse | null>(null);
   const [formData, setFormData] = useState<CourseFormData>({
@@ -70,7 +70,7 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
     semester: '',
     academicYear: new Date().getFullYear().toString(),
     maxStudents: 50,
-    beaconId: '',
+    beaconId: 'none',
     approvalRequired: true,
     schedule: {
       days: [],
@@ -94,17 +94,14 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
       // Load courses for the school
       const coursesResponse = await CourseService.getCoursesBySchool(
         user.schoolId, 
-        currentPage, 
-        20,
-        searchTerm || undefined,
-        selectedDepartment || undefined,
-        selectedSemester || undefined
+        1, 
+        1000 // Load all courses for client-side filtering
       );
       setCourses(coursesResponse.data);
       setTotalPages(coursesResponse.totalPages);
 
-      // Load lecturers for the school
-      const lecturersResponse = await UserService.getUsersBySchool(
+      // Load lecturers for the school (using HOD-specific method for consistency)
+      const lecturersResponse = await UserService.getUsersBySchoolForHOD(
         user.schoolId,
         1,
         100,
@@ -134,7 +131,8 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
         schoolId: user.schoolId,
         instructorName: lecturers.find(l => l.id === formData.instructorId)?.name || '',
         room: formData.location,
-        beaconMacAddress: beacons.find(b => b.id === formData.beaconId)?.macAddress,
+        beaconId: formData.beaconId === 'none' ? undefined : formData.beaconId,
+        beaconMacAddress: formData.beaconId === 'none' ? undefined : beacons.find(b => b.id === formData.beaconId)?.macAddress,
         startTime: formData.schedule.startTime,
         endTime: formData.schedule.endTime,
         days: formData.schedule.days
@@ -157,7 +155,8 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
         ...formData,
         instructorName: lecturers.find(l => l.id === formData.instructorId)?.name || '',
         room: formData.location,
-        beaconMacAddress: beacons.find(b => b.id === formData.beaconId)?.macAddress,
+        beaconId: formData.beaconId === 'none' ? undefined : formData.beaconId,
+        beaconMacAddress: formData.beaconId === 'none' ? undefined : beacons.find(b => b.id === formData.beaconId)?.macAddress,
         startTime: formData.schedule.startTime,
         endTime: formData.schedule.endTime,
         days: formData.schedule.days
@@ -196,7 +195,7 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
       semester: '',
       academicYear: new Date().getFullYear().toString(),
       maxStudents: 50,
-      beaconId: '',
+      beaconId: 'none',
       approvalRequired: true,
       schedule: {
         days: [],
@@ -218,7 +217,7 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
       semester: course.semester || '',
       academicYear: course.academicYear || new Date().getFullYear().toString(),
       maxStudents: course.maxStudents,
-      beaconId: course.beaconId || '',
+      beaconId: course.beaconId || 'none',
       approvalRequired: course.approvalRequired,
       schedule: {
         days: course.days || [],
@@ -235,8 +234,8 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
       course.instructor?.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.instructor?.lastName.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesDepartment = !selectedDepartment || course.department === selectedDepartment;
-    const matchesSemester = !selectedSemester || course.semester === selectedSemester;
+    const matchesDepartment = !selectedDepartment || selectedDepartment === 'all' || course.department === selectedDepartment;
+    const matchesSemester = !selectedSemester || selectedSemester === 'all' || course.semester === selectedSemester;
     
     return matchesSearch && matchesDepartment && matchesSemester;
   });
@@ -369,7 +368,7 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
                     <SelectValue placeholder="Select beacon" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No beacon</SelectItem>
+                    <SelectItem value="none">No beacon</SelectItem>
                     {beacons.map(beacon => (
                       <SelectItem key={beacon.id} value={beacon.id}>
                         {beacon.name} ({beacon.macAddress})
@@ -459,7 +458,7 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
                 <SelectValue placeholder="All Departments" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Departments</SelectItem>
+                <SelectItem value="all">All Departments</SelectItem>
                 {departments.map(dept => (
                   <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                 ))}
@@ -470,7 +469,7 @@ const SchoolCourseManagement: React.FC<SchoolCourseManagementProps> = ({ user })
                 <SelectValue placeholder="All Semesters" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Semesters</SelectItem>
+                <SelectItem value="all">All Semesters</SelectItem>
                 {semesters.map(sem => (
                   <SelectItem key={sem} value={sem}>{sem}</SelectItem>
                 ))}

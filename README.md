@@ -1,4 +1,6 @@
-# Welcome to your Lovable project
+# T-Check Admin Dashboard
+
+A modern web-based attendance management system for educational institutions.
 
 ## Project info
 

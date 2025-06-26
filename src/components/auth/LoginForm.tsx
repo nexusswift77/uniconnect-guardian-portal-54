@@ -24,7 +24,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
       await signIn(email, password);
       toast({
         title: "Login Successful",
-        description: "Welcome to UniConnect dashboard",
+        description: "Welcome to T-Check dashboard",
       });
     } catch (error: any) {
       toast({
@@ -42,10 +42,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
       <div className="w-full max-w-md">
         <Card className="glass-card p-8 border-sky-blue/20">
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-sky-blue/20 rounded-3xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl font-bold text-sky-blue">UC</span>
+            <div className="w-20 h-20 rounded-3xl overflow-hidden mx-auto mb-4">
+              <img 
+                src="/Tcheck.jpg" 
+                alt="T-Check Logo" 
+                className="w-full h-full object-cover"
+              />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">UniConnect</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">T-Check</h1>
             <p className="text-gray-400">Admin & Lecturer Dashboard</p>
           </div>
 
@@ -81,7 +85,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-400">
-              Demo accounts: lecturer@uni.edu, admin@uni.edu, hod@uni.edu<br/>
+              Demo accounts: lecturer@uniconnect.edu, admin3@uniconnect.edu, hod@uniconnect.edu<br/>
               Don't have an account?{' '}
               <button
                 onClick={onSwitchToSignup}

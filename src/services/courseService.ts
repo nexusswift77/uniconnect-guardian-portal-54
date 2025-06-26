@@ -27,6 +27,36 @@ export class CourseService {
         };
       }
 
+      // If a beacon is assigned, check if it's available
+      if (courseData.beaconId) {
+        const { data: beacon } = await supabase
+          .from('ble_beacons')
+          .select('id, assigned_to_course, status')
+          .eq('id', courseData.beaconId)
+          .single();
+
+        if (!beacon) {
+          return { 
+            data: null as any, 
+            error: 'Selected beacon not found'
+          };
+        }
+
+        if (beacon.assigned_to_course) {
+          return { 
+            data: null as any, 
+            error: 'Selected beacon is already assigned to another course'
+          };
+        }
+
+        if (beacon.status !== 'active') {
+          return { 
+            data: null as any, 
+            error: 'Selected beacon is not active'
+          };
+        }
+      }
+
       const { data, error } = await supabase
         .from('courses')
         .insert({
@@ -44,7 +74,7 @@ export class CourseService {
           beacon_id: courseData.beaconId,
           approval_required: courseData.approvalRequired || true,
           // Mobile app compatibility fields
-          instructor_name: courseData.instructorName,
+          instructor: courseData.instructorName,
           room: courseData.room,
           beacon_mac_address: courseData.beaconMacAddress,
           start_time: courseData.startTime,
@@ -56,12 +86,29 @@ export class CourseService {
           *,
           instructor:users!instructor_id(*),
           school:schools(*),
-          beacon:ble_beacons(*)
+          beacon:ble_beacons!beacon_id(*)
         `)
         .single();
 
       if (error) {
         return { data: null as any, error: error.message };
+      }
+
+      // If a beacon was assigned, update the beacon's assigned_to_course field
+      if (courseData.beaconId && data) {
+        const { error: beaconUpdateError } = await supabase
+          .from('ble_beacons')
+          .update({ 
+            assigned_to_course: data.id,
+            status: 'active' // Ensure beacon is active when assigned
+          })
+          .eq('id', courseData.beaconId);
+
+        if (beaconUpdateError) {
+          console.error('Failed to update beacon assignment:', beaconUpdateError);
+          // Note: We don't return error here as the course was created successfully
+          // The beacon assignment can be fixed later
+        }
       }
 
       return { 
@@ -92,7 +139,7 @@ export class CourseService {
           *,
           instructor:users!instructor_id(*),
           school:schools(*),
-          beacon:ble_beacons(*)
+          beacon:ble_beacons!beacon_id(*)
         `, { count: 'exact' });
 
       // Apply filters
@@ -159,7 +206,7 @@ export class CourseService {
           *,
           instructor:users!instructor_id(*),
           school:schools(*),
-          beacon:ble_beacons(*)
+          beacon:ble_beacons!beacon_id(*)
         `)
         .eq('id', id)
         .single();
@@ -195,7 +242,7 @@ export class CourseService {
           *,
           instructor:users!instructor_id(*),
           school:schools(*),
-          beacon:ble_beacons(*)
+          beacon:ble_beacons!beacon_id(*)
         `, { count: 'exact' })
         .eq('school_id', schoolId);
 
@@ -246,7 +293,7 @@ export class CourseService {
           *,
           instructor:users!instructor_id(*),
           school:schools(*),
-          beacon:ble_beacons(*)
+          beacon:ble_beacons!beacon_id(*)
         `, { count: 'exact' })
         .eq('instructor_id', instructorId);
 
@@ -286,6 +333,52 @@ export class CourseService {
     updates: Partial<EnhancedCourse>
   ): Promise<ApiResponse<EnhancedCourse>> {
     try {
+      // Get current course data to check for beacon changes
+      const { data: currentCourse } = await supabase
+        .from('courses')
+        .select('beacon_id')
+        .eq('id', id)
+        .single();
+
+      if (!currentCourse) {
+        return { data: null as any, error: 'Course not found' };
+      }
+
+      const oldBeaconId = currentCourse.beacon_id;
+      const newBeaconId = updates.beaconId !== undefined ? updates.beaconId : oldBeaconId;
+
+      // If beacon is being changed, validate the new beacon
+      if (updates.beaconId !== undefined && updates.beaconId !== oldBeaconId) {
+        if (newBeaconId) {
+          const { data: beacon } = await supabase
+            .from('ble_beacons')
+            .select('id, assigned_to_course, status')
+            .eq('id', newBeaconId)
+            .single();
+
+          if (!beacon) {
+            return { 
+              data: null as any, 
+              error: 'Selected beacon not found'
+            };
+          }
+
+          if (beacon.assigned_to_course && beacon.assigned_to_course !== id) {
+            return { 
+              data: null as any, 
+              error: 'Selected beacon is already assigned to another course'
+            };
+          }
+
+          if (beacon.status !== 'active') {
+            return { 
+              data: null as any, 
+              error: 'Selected beacon is not active'
+            };
+          }
+        }
+      }
+
       const updateData: any = {};
       
       if (updates.code) updateData.code = updates.code;
@@ -302,7 +395,7 @@ export class CourseService {
       if (updates.approvalRequired !== undefined) updateData.approval_required = updates.approvalRequired;
       
       // Mobile app compatibility fields
-      if (updates.instructorName !== undefined) updateData.instructor_name = updates.instructorName;
+      if (updates.instructorName !== undefined) updateData.instructor = updates.instructorName;
       if (updates.room !== undefined) updateData.room = updates.room;
       if (updates.beaconMacAddress !== undefined) updateData.beacon_mac_address = updates.beaconMacAddress;
       if (updates.startTime !== undefined) updateData.start_time = updates.startTime;
@@ -320,12 +413,38 @@ export class CourseService {
           *,
           instructor:users!instructor_id(*),
           school:schools(*),
-          beacon:ble_beacons(*)
+          beacon:ble_beacons!beacon_id(*)
         `)
         .single();
 
       if (error) {
         return { data: null as any, error: error.message };
+      }
+
+      // Handle beacon assignment changes
+      if (updates.beaconId !== undefined && newBeaconId !== oldBeaconId) {
+        // Unassign old beacon if it exists
+        if (oldBeaconId) {
+          await supabase
+            .from('ble_beacons')
+            .update({ 
+              assigned_to_course: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', oldBeaconId);
+        }
+
+        // Assign new beacon if it exists
+        if (newBeaconId) {
+          await supabase
+            .from('ble_beacons')
+            .update({ 
+              assigned_to_course: id,
+              status: 'active',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', newBeaconId);
+        }
       }
 
       return { 
@@ -345,6 +464,20 @@ export class CourseService {
    */
   static async deleteCourse(id: string): Promise<ApiResponse<boolean>> {
     try {
+      // Get course data to check for beacon assignment
+      const { data: course } = await supabase
+        .from('courses')
+        .select('beacon_id')
+        .eq('id', id)
+        .single();
+
+      if (!course) {
+        return { 
+          data: false, 
+          error: 'Course not found'
+        };
+      }
+
       // Check for dependencies (class sessions, enrollments, etc.)
       const { data: sessions } = await supabase
         .from('class_sessions')
@@ -370,6 +503,17 @@ export class CourseService {
           data: false, 
           error: 'Cannot delete course with existing enrollments'
         };
+      }
+
+      // If course has a beacon assigned, unassign it before deleting
+      if (course.beacon_id) {
+        await supabase
+          .from('ble_beacons')
+          .update({ 
+            assigned_to_course: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', course.beacon_id);
       }
 
       const { error } = await supabase
@@ -410,7 +554,7 @@ export class CourseService {
           *,
           instructor:users!instructor_id(*),
           school:schools(*),
-          beacon:ble_beacons(*)
+          beacon:ble_beacons!beacon_id(*)
         `)
         .single();
 
@@ -464,7 +608,7 @@ export class CourseService {
           *,
           instructor:users!instructor_id(*),
           school:schools(*),
-          beacon:ble_beacons(*)
+          beacon:ble_beacons!beacon_id(*)
         `)
         .single();
 
@@ -633,7 +777,7 @@ export class CourseService {
       } : undefined,
       approvalRequired: dbCourse.approval_required,
       // Mobile app compatibility fields
-      instructorName: dbCourse.instructor_name,
+      instructorName: dbCourse.instructor,
       room: dbCourse.room,
       beaconMacAddress: dbCourse.beacon_mac_address,
       startTime: dbCourse.start_time,

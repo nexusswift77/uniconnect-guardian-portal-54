@@ -47,6 +47,31 @@ export class SchoolService {
   }
 
   /**
+   * Get all active schools (for signup form)
+   */
+  static async getActiveSchools(): Promise<ApiResponse<School[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) {
+        return { data: [], error: error.message };
+      }
+
+      const schools = data?.map(this.transformSchoolFromDB) || [];
+      return { data: schools };
+    } catch (error) {
+      return { 
+        data: [], 
+        error: error instanceof Error ? error.message : 'Failed to fetch active schools'
+      };
+    }
+  }
+
+  /**
    * Get all schools with pagination
    */
   static async getAllSchools(

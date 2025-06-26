@@ -41,7 +41,7 @@ export class BeaconService {
         .select(`
           *,
           school:schools(*),
-          course:courses(*)
+          course:courses!assigned_to_course(*)
         `)
         .single();
 
@@ -76,7 +76,7 @@ export class BeaconService {
         .select(`
           *,
           school:schools(*),
-          course:courses(*)
+          course:courses!assigned_to_course(*)
         `, { count: 'exact' });
 
       // Apply filters
@@ -143,7 +143,7 @@ export class BeaconService {
         .select(`
           *,
           school:schools(*),
-          course:courses(*)
+          course:courses!assigned_to_course(*)
         `)
         .eq('id', id)
         .single();
@@ -178,7 +178,7 @@ export class BeaconService {
         .select(`
           *,
           school:schools(*),
-          course:courses(*)
+          course:courses!assigned_to_course(*)
         `, { count: 'exact' })
         .eq('school_id', schoolId);
 
@@ -273,7 +273,7 @@ export class BeaconService {
         .select(`
           *,
           school:schools(*),
-          course:courses(*)
+          course:courses!assigned_to_course(*)
         `)
         .single();
 
@@ -326,7 +326,7 @@ export class BeaconService {
         .select(`
           *,
           school:schools(*),
-          course:courses(*)
+          course:courses!assigned_to_course(*)
         `)
         .single();
 
@@ -361,7 +361,7 @@ export class BeaconService {
         .select(`
           *,
           school:schools(*),
-          course:courses(*)
+          course:courses!assigned_to_course(*)
         `)
         .single();
 
@@ -453,7 +453,7 @@ export class BeaconService {
         .select(`
           *,
           school:schools(*),
-          course:courses(*)
+          course:courses!assigned_to_course(*)
         `)
         .single();
 
@@ -553,7 +553,7 @@ export class BeaconService {
         maxStudents: dbBeacon.course.max_students,
         beaconId: dbBeacon.course.beacon_id,
         approvalRequired: dbBeacon.course.approval_required,
-        instructorName: dbBeacon.course.instructor_name,
+        instructorName: dbBeacon.course.instructor,
         room: dbBeacon.course.room,
         beaconMacAddress: dbBeacon.course.beacon_mac_address,
         startTime: dbBeacon.course.start_time,

@@ -55,20 +55,20 @@ const SchoolUserManagement: React.FC<SchoolUserManagementProps> = ({ user, schoo
       setLoading(true);
       setError(null);
       
-      const filters = {
-        schoolId: school.id,
-        role: roleFilter !== 'all' ? roleFilter as any : undefined,
-        approvalStatus: 'approved' as const // Only show approved users in active tab
-      };
-      
-      const response = await UserService.getAllUsers(
+      // Use HOD-specific method that restricts to students and lecturers only
+      const response = await UserService.getUsersBySchoolForHOD(
+        school.id,
         currentPage,
         20,
-        filters,
-        searchTerm
+        roleFilter !== 'all' ? roleFilter : undefined
       );
       
-      setUsers(response.data);
+      // Filter by approval status on client side if needed
+      const filteredUsers = response.data.filter(user => 
+        statusFilter === 'all' || user.approvalStatus === 'approved'
+      );
+      
+      setUsers(filteredUsers);
       setTotalPages(response.totalPages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
@@ -84,7 +84,8 @@ const SchoolUserManagement: React.FC<SchoolUserManagementProps> = ({ user, schoo
       setLoading(true);
       setError(null);
       
-      const response = await UserService.getPendingApprovals(school.id, currentPage, 20);
+      // Use HOD-specific method that restricts to students and lecturers only
+      const response = await UserService.getPendingApprovalsForHOD(school.id, currentPage, 20);
       setPendingUsers(response.data);
       setTotalPages(response.totalPages);
     } catch (err) {
@@ -413,8 +414,6 @@ const SchoolUserManagement: React.FC<SchoolUserManagementProps> = ({ user, schoo
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="student">Students</SelectItem>
                 <SelectItem value="lecturer">Lecturers</SelectItem>
-                <SelectItem value="admin">Admins</SelectItem>
-                <SelectItem value="head_lecturer">HODs</SelectItem>
               </SelectContent>
             </Select>
 
