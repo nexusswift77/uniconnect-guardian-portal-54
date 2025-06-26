@@ -10,7 +10,8 @@ import {
   User, 
   LogIn,
   Monitor,
-  Clock
+  Clock,
+  BookOpen
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -34,12 +35,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole, activeTab, onTabChan
         { id: 'reports', label: 'Reports', icon: Clock },
       ],
       admin: [
+        { id: 'course-management', label: 'Course Management', icon: BookOpen },
         { id: 'analytics', label: 'Analytics', icon: Monitor },
         { id: 'users', label: 'User Management', icon: Users },
         { id: 'audit', label: 'Audit Trail', icon: Clock },
         { id: 'rules', label: 'System Rules', icon: Settings },
       ],
       head_lecturer: [
+        { id: 'course-management', label: 'Course Management', icon: BookOpen },
         { id: 'analytics', label: 'Department Analytics', icon: Monitor },
         { id: 'lecturers', label: 'Lecturer Overview', icon: Users },
         { id: 'reports', label: 'Board Reports', icon: Clock },

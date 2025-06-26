@@ -1,249 +1,75 @@
-
-import React, { useState } from 'react';
-import { LoginForm } from '@/components/auth/LoginForm';
-import { Sidebar } from '@/components/dashboard/Sidebar';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
-import { MetricCard } from '@/components/dashboard/MetricCard';
-import { AttendanceTable } from '@/components/dashboard/AttendanceTable';
-import { QRGenerator } from '@/components/dashboard/QRGenerator';
-import { LecturerOverview } from '@/components/dashboard/LecturerOverview';
-import { ClassesOverview } from '@/components/dashboard/ClassesOverview';
-import { ReportsPage } from '@/components/dashboard/ReportsPage';
-import { Users, Calendar, Clock, Monitor, Bell, Grid2X2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Student } from '@/types/student';
-
-// Mock data with 30 students
-const mockStudents: Student[] = [
-  { id: '1', name: 'Alice Johnson', studentId: 'ST001', checkInTime: '09:02 AM', method: 'BLE', status: 'verified' },
-  { id: '2', name: 'Bob Smith', studentId: 'ST002', checkInTime: '09:05 AM', method: 'QR', status: 'pending' },
-  { id: '3', name: 'Carol Davis', studentId: 'ST003', checkInTime: '09:01 AM', method: 'BLE', status: 'verified' },
-  { id: '4', name: 'David Wilson', studentId: 'ST004', method: 'Absent', status: 'absent' },
-  { id: '5', name: 'Eva Brown', studentId: 'ST005', checkInTime: '09:03 AM', method: 'BLE', status: 'verified' },
-  { id: '6', name: 'Frank Miller', studentId: 'ST006', checkInTime: '09:07 AM', method: 'QR', status: 'pending' },
-  { id: '7', name: 'Grace Lee', studentId: 'ST007', checkInTime: '09:00 AM', method: 'BLE', status: 'verified' },
-  { id: '8', name: 'Henry Taylor', studentId: 'ST008', checkInTime: '09:04 AM', method: 'BLE', status: 'verified' },
-  { id: '9', name: 'Ivy Chen', studentId: 'ST009', method: 'Absent', status: 'absent' },
-  { id: '10', name: 'Jack Thompson', studentId: 'ST010', checkInTime: '09:06 AM', method: 'QR', status: 'pending' },
-  { id: '11', name: 'Kate Anderson', studentId: 'ST011', checkInTime: '09:02 AM', method: 'BLE', status: 'verified' },
-  { id: '12', name: 'Liam Rodriguez', studentId: 'ST012', checkInTime: '09:08 AM', method: 'BLE', status: 'verified' },
-  { id: '13', name: 'Maya Patel', studentId: 'ST013', method: 'Absent', status: 'absent' },
-  { id: '14', name: 'Noah Garcia', studentId: 'ST014', checkInTime: '09:03 AM', method: 'QR', status: 'pending' },
-  { id: '15', name: 'Olivia Wright', studentId: 'ST015', checkInTime: '09:01 AM', method: 'BLE', status: 'verified' },
-  { id: '16', name: 'Parker Kim', studentId: 'ST016', checkInTime: '09:05 AM', method: 'BLE', status: 'verified' },
-  { id: '17', name: 'Quinn Foster', studentId: 'ST017', method: 'Absent', status: 'absent' },
-  { id: '18', name: 'Ruby Martinez', studentId: 'ST018', checkInTime: '09:07 AM', method: 'QR', status: 'pending' },
-  { id: '19', name: 'Sam Cooper', studentId: 'ST019', checkInTime: '09:02 AM', method: 'BLE', status: 'verified' },
-  { id: '20', name: 'Tara Johnson', studentId: 'ST020', checkInTime: '09:04 AM', method: 'BLE', status: 'verified' },
-  { id: '21', name: 'Ulysses King', studentId: 'ST021', method: 'Absent', status: 'absent' },
-  { id: '22', name: 'Vera Lopez', studentId: 'ST022', checkInTime: '09:06 AM', method: 'QR', status: 'pending' },
-  { id: '23', name: 'Wade Scott', studentId: 'ST023', checkInTime: '09:01 AM', method: 'BLE', status: 'verified' },
-  { id: '24', name: 'Xara Bell', studentId: 'ST024', checkInTime: '09:08 AM', method: 'BLE', status: 'verified' },
-  { id: '25', name: 'Yuki Tanaka', studentId: 'ST025', method: 'Absent', status: 'absent' },
-  { id: '26', name: 'Zoe Adams', studentId: 'ST026', checkInTime: '09:03 AM', method: 'QR', status: 'pending' },
-  { id: '27', name: 'Aaron Brooks', studentId: 'ST027', checkInTime: '09:05 AM', method: 'BLE', status: 'verified' },
-  { id: '28', name: 'Bella Cruz', studentId: 'ST028', checkInTime: '09:02 AM', method: 'BLE', status: 'verified' },
-  { id: '29', name: 'Carlos Rivera', studentId: 'ST029', method: 'Absent', status: 'absent' },
-  { id: '30', name: 'Diana Foster', studentId: 'ST030', checkInTime: '09:07 AM', method: 'QR', status: 'pending' },
-];
+import React, { useEffect } from 'react';
+import { AuthWrapper } from '@/components/auth/AuthWrapper';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import RoleBasedDashboard from '@/components/dashboard/RoleBasedDashboard';
 
 const Index = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState('');
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [students, setStudents] = useState<Student[]>(mockStudents);
-  const [globalSearchTerm, setGlobalSearchTerm] = useState('');
-  const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'present'>('all');
-  const { toast } = useToast();
+  const { userProfile, loading } = useAuth();
+  const navigate = useNavigate();
 
-  const handleLogin = (email: string, password: string, role: string) => {
-    setIsLoggedIn(true);
-    setUserRole(role);
-    console.log('Login successful:', { email, role });
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserRole('');
-    setActiveTab('dashboard');
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out",
-    });
-  };
-
-  const handleApprove = (studentId: string) => {
-    setStudents(prev => prev.map(student => 
-      student.id === studentId 
-        ? { ...student, status: 'verified' as const }
-        : student
-    ));
-    toast({
-      title: "Student Approved",
-      description: "QR check-in has been approved",
-    });
-  };
-
-  const handleReject = (studentId: string) => {
-    setStudents(prev => prev.map(student => 
-      student.id === studentId 
-        ? { ...student, status: 'absent' as const, method: 'Absent' as const, checkInTime: undefined }
-        : student
-    ));
-    toast({
-      title: "Student Rejected",
-      description: "QR check-in has been rejected",
-      variant: "destructive",
-    });
-  };
-
-  const handleGlobalSearch = (searchTerm: string) => {
-    setGlobalSearchTerm(searchTerm);
-  };
-
-  const handleMetricCardClick = (filter: 'all' | 'present') => {
-    setAttendanceFilter(filter);
-    setActiveTab('attendance');
-  };
-
-  const getPageTitle = () => {
-    const titles = {
-      dashboard: 'Dashboard Overview',
-      classes: 'My Classes',
-      attendance: 'Live Attendance',
-      'qr-generator': 'QR Code Generator',
-      reports: 'Attendance Reports',
-      analytics: userRole === 'admin' ? 'System Analytics' : 'Department Analytics',
-      users: 'User Management',
-      audit: 'Audit Trail',
-      rules: 'System Rules',
-      lecturers: 'Lecturer Overview'
-    };
-    return titles[activeTab as keyof typeof titles] || 'Dashboard';
-  };
-
-  const getFilteredStudentsForTable = () => {
-    if (attendanceFilter === 'present') {
-      return students.filter(s => s.status === 'verified');
+  useEffect(() => {
+    // If user is authenticated and has a profile, show their role-based dashboard
+    if (userProfile && !loading) {
+      // Check if user has admin access (any role that can access the dashboard)
+      const hasAdminAccess = userProfile.role === 'system_admin' || 
+                            userProfile.role === 'admin' || 
+                            userProfile.role === 'head_lecturer' ||
+                            userProfile.role === 'lecturer';
+      
+      if (hasAdminAccess) {
+        // User can access dashboard, show it directly on the index page
+        return;
+      } else {
+        // User doesn't have admin access, show access denied
+        return;
+      }
     }
-    return students;
-  };
+  }, [userProfile, loading, navigate]);
 
-  const renderDashboardContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div onClick={() => handleMetricCardClick('all')} className="cursor-pointer">
-                <MetricCard 
-                  title="Total Students" 
-                  value="30" 
-                  change="12%" 
-                  trend="up" 
-                  icon={Users} 
-                  color="blue"
-                />
-              </div>
-              <div onClick={() => handleMetricCardClick('present')} className="cursor-pointer">
-                <MetricCard 
-                  title="Present Today" 
-                  value={students.filter(s => s.status === 'verified').length.toString()} 
-                  change="8%" 
-                  trend="up" 
-                  icon={Calendar} 
-                  color="green"
-                />
-              </div>
-              <MetricCard 
-                title="Attendance Rate" 
-                value={`${Math.round((students.filter(s => s.status === 'verified').length / students.length) * 100)}%`}
-                change="3%" 
-                trend="up" 
-                icon={Clock} 
-                color="blue"
-              />
-              <MetricCard 
-                title="Active Sessions" 
-                value="3" 
-                icon={Monitor} 
-                color="yellow"
-              />
-            </div>
-            
-            <AttendanceTable 
-              students={students} 
-              onApprove={handleApprove}
-              onReject={handleReject}
-              userRole={userRole}
-              showSearch={true}
-            />
-          </div>
-        );
-      
-      case 'attendance':
-        return (
-          <AttendanceTable 
-            students={getFilteredStudentsForTable()} 
-            onApprove={handleApprove}
-            onReject={handleReject}
-            userRole={userRole}
-            showSearch={true}
-            globalSearchTerm={globalSearchTerm}
-          />
-        );
-      
-      case 'classes':
-        return <ClassesOverview globalSearchTerm={globalSearchTerm} />;
-      
-      case 'qr-generator':
-        return <QRGenerator />;
-      
-      case 'reports':
-        return <ReportsPage />;
-      
-      case 'lecturers':
-        return <LecturerOverview />;
-      
-      default:
-        return (
-          <div className="glass-card p-12 text-center">
-            <Grid2X2 className="w-16 h-16 text-sky-blue mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">{getPageTitle()}</h2>
-            <p className="text-gray-400">This section is coming soon</p>
-          </div>
-        );
-    }
-  };
-
-  if (!isLoggedIn) {
-    return <LoginForm onLogin={handleLogin} />;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
-  return (
-    <div className="min-h-screen flex w-full">
-      <Sidebar 
-        userRole={userRole}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onLogout={handleLogout}
-      />
-      
-      <div className="flex-1 p-8 overflow-auto">
-        <DashboardHeader 
-          userRole={userRole} 
-          title={getPageTitle()}
-          students={students}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          onSearch={handleGlobalSearch}
-          activeTab={activeTab}
-          onLogout={handleLogout}
-        />
-        {renderDashboardContent()}
+  // If user is not authenticated, show login/signup forms
+  if (!userProfile) {
+    return <AuthWrapper />;
+  }
+
+  // Check if user has admin access
+  const hasAdminAccess = userProfile.role === 'system_admin' || 
+                        userProfile.role === 'admin' || 
+                        userProfile.role === 'head_lecturer' ||
+                        userProfile.role === 'lecturer';
+
+  if (!hasAdminAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
+          <p className="text-muted-foreground mb-4">
+            You don't have permission to access the admin dashboard.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Your role: {userProfile.role}
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Students should use the mobile app for attendance marking.
+          </p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Show the role-based dashboard for authenticated users with admin access
+  return <RoleBasedDashboard user={userProfile} />;
 };
 
-export default Index;
+export default Index; 

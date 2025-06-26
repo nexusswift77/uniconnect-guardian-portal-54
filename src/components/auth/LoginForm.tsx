@@ -1,40 +1,35 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginFormProps {
-  onLogin: (email: string, password: string, role: string) => void;
+  onSwitchToSignup: () => void;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Demo role detection based on email
-    let role = 'lecturer';
-    if (email.includes('admin')) role = 'admin';
-    if (email.includes('hod')) role = 'head_lecturer';
-
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      onLogin(email, password, role);
+      await signIn(email, password);
       toast({
         title: "Login Successful",
-        description: `Welcome to UniConnect ${role} dashboard`,
+        description: "Welcome to UniConnect dashboard",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Login Failed",
-        description: "Please check your credentials",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -86,7 +81,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-400">
-              Demo accounts: lecturer@uni.edu, admin@uni.edu, hod@uni.edu
+              Demo accounts: lecturer@uni.edu, admin@uni.edu, hod@uni.edu<br/>
+              Don't have an account?{' '}
+              <button
+                onClick={onSwitchToSignup}
+                className="text-sky-blue hover:text-sky-blue/80 font-medium"
+              >
+                Create one here
+              </button>
             </p>
           </div>
         </Card>
